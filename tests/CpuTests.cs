@@ -49,6 +49,90 @@ namespace GameBoyTests
                 Assert.Equal(0x1A, cpu.H);
                 Assert.Equal(0xB1, cpu.L);
             }
+
+            [Fact]
+            public void TestGettingFlags()
+            {
+                var cpu = new GameBoy.Cpu();
+
+                cpu.F = (byte)(1 << 7);
+                Assert.True(cpu.flagZ);
+                Assert.False(cpu.flagN);
+                Assert.False(cpu.flagH);
+                Assert.False(cpu.flagC);
+
+                cpu.F = 0;
+                Assert.False(cpu.flagZ);
+                Assert.False(cpu.flagN);
+                Assert.False(cpu.flagH);
+                Assert.False(cpu.flagC);
+
+                cpu.F = (byte)(1 << 6);
+                Assert.False(cpu.flagZ);
+                Assert.True(cpu.flagN);
+                Assert.False(cpu.flagH);
+                Assert.False(cpu.flagC);
+
+                cpu.F = 0;
+                Assert.False(cpu.flagZ);
+                Assert.False(cpu.flagN);
+                Assert.False(cpu.flagH);
+                Assert.False(cpu.flagC);
+
+                cpu.F = (byte)(1 << 5);
+                Assert.False(cpu.flagZ);
+                Assert.False(cpu.flagN);
+                Assert.True(cpu.flagH);
+                Assert.False(cpu.flagC);
+
+                cpu.F = 0;
+                Assert.False(cpu.flagZ);
+                Assert.False(cpu.flagN);
+                Assert.False(cpu.flagH);
+                Assert.False(cpu.flagC);
+
+                cpu.F = (byte)(1 << 4);
+                Assert.False(cpu.flagZ);
+                Assert.False(cpu.flagN);
+                Assert.False(cpu.flagH);
+                Assert.True(cpu.flagC);
+
+                cpu.F = 0;
+                Assert.False(cpu.flagZ);
+                Assert.False(cpu.flagN);
+                Assert.False(cpu.flagH);
+                Assert.False(cpu.flagC);
+            }
+
+            [Fact]
+            public void TestSettingFlags()
+            {
+                var cpu = new GameBoy.Cpu();
+
+                cpu.flagZ = true;
+                Assert.True(0 != (cpu.F & (1 << 7)));
+
+                cpu.flagZ = false;
+                Assert.True(0 == (cpu.F & (1 << 7)));
+
+                cpu.flagN = true;
+                Assert.True(0 != (cpu.F & (1 << 6)));
+
+                cpu.flagN = false;
+                Assert.True(0 == (cpu.F & (1 << 6)));
+
+                cpu.flagH = true;
+                Assert.True(0 != (cpu.F & (1 << 5)));
+
+                cpu.flagH = false;
+                Assert.True(0 == (cpu.F & (1 << 5)));
+
+                cpu.flagC = true;
+                Assert.True(0 != (cpu.F & (1 << 4)));
+
+                cpu.flagC = false;
+                Assert.True(0 == (cpu.F & (1 << 4)));
+            }
         }
     }
 }

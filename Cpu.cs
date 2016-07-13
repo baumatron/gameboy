@@ -60,20 +60,65 @@ namespace GameBoy
             }
         }
 
-        public void TestRegisters()
+        // Flag convenience properties
+        internal bool getBitWithIndex(byte target, ushort index)
         {
-            A = 0xff;
-            F = 0x10;
+            return 0 != (target & (1 << index));
+        }
 
-            Console.WriteLine($"A: 0x{A:X2} F: 0x{F:X2} AF: 0x{AF:X4}");
+        internal void setBitWithIndex(ref byte target, ushort index, bool bitValue)
+        {
+            target = (byte)((target & ~(1 << index)) | ((bitValue ? 1 : 0) << index));
+        }
 
-            if (AF != 0xff10)
+        // TODO: Could use a closure or a generic here to specify
+        //       the index, and define a function that work son self.F directly instead
+        //       of passing it by reference.
+        internal bool flagZ
+        {
+            get
             {
-                Console.WriteLine("AF don't work.");
+                return getBitWithIndex(this.F, 7);
             }
-            else
+            set
             {
-                Console.WriteLine("Yes!");
+                setBitWithIndex(ref this.F, 7, value);
+            }
+        }
+
+        internal bool flagN
+        {
+            get
+            {
+                return getBitWithIndex(this.F, 6);
+            }
+            set
+            {
+                setBitWithIndex(ref this.F, 6, value);
+            }
+        }
+
+        internal bool flagH
+        {
+            get
+            {
+                return getBitWithIndex(this.F, 5);
+            }
+            set
+            {
+                setBitWithIndex(ref this.F, 5, value);
+            }
+        }
+
+        internal bool flagC
+        {
+            get
+            {
+                return getBitWithIndex(this.F, 4);
+            }
+            set
+            {
+                setBitWithIndex(ref this.F, 4, value);
             }
         }
     }
