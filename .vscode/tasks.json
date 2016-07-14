@@ -10,13 +10,13 @@
             "taskName": "build",
             "args": [ ],
             "isBuildCommand": true,
-            "showOutput": "always",
+            "showOutput": "silent",
             "problemMatcher": "$msCompile"
         },
         {
             "taskName": "test",
             "args": [ ],
-            "isBuildCommand": true,
+            "isTestCommand": true,
             "showOutput": "always",
             "problemMatcher": "$msCompile"
         }
