@@ -380,6 +380,7 @@ namespace GameBoy
                     break;
                 case 0x77:
                     memory.Write(HL, A);
+                    cyclesUsed += 4;
                     break;
                 // LD A, register
                 case 0x78:

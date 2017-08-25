@@ -1,5 +1,6 @@
 ﻿using Xunit;
 using System.Collections.Generic;
+using System;
 
 namespace GameBoyTests
 {
@@ -221,14 +222,13 @@ namespace GameBoyTests
                 Assert.Equal(expected, cpu.memory.Read(address));
             }
 
-            delegate void ValidateCPUOperationTask();
             [Fact]
             public void TestLD()
             {
                 var cpu = new GameBoy.Cpu();
                 cpu.Init();
 
-                var testTasks = new List<ValidateCPUOperationTask>();
+                var testTasks = new List<Action>();
 
                 // Set up some test data for address loads
                 ushort pc = 0x100;
@@ -259,15 +259,8 @@ namespace GameBoyTests
                 cpu.memory.Write(pc++, (byte)(baseOpCode + 0x06));
                 testTasks.Add(() => TestLDFromHLAddress(cpu, ref cpu.A));
 
-                // LD (HL), A
                 cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
-                testTasks.Add(() =>
-                {
-                    cpu.memory.Write(testLoadAddress, 0xFF); // Clear old data
-                    cpu.A = testLoadData;
-                    cpu.HL = testLoadAddress;
-                    TestLDToAddress(cpu, testLoadAddress, cpu.A);
-                });
+                testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.A, ref cpu.A));
 
                 cpu.memory.Write(pc++, 0x3E);
                 cpu.memory.Write(pc++, 0xE3);
@@ -290,6 +283,16 @@ namespace GameBoyTests
                     cpu.memory.Write(testLoadAddress, 0xFF); // Clear old data
                     cpu.A = testLoadData;
                     cpu.DE = testLoadAddress;
+                    TestLDToAddress(cpu, testLoadAddress, cpu.A);
+                });
+
+                // LD (HL), A
+                cpu.memory.Write(pc++, 0x77);
+                testTasks.Add(() =>
+                {
+                    cpu.memory.Write(testLoadAddress, 0xFF); // Clear old data
+                    cpu.A = testLoadData;
+                    cpu.HL = testLoadAddress;
                     TestLDToAddress(cpu, testLoadAddress, cpu.A);
                 });
 
