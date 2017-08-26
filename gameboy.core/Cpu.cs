@@ -5,8 +5,118 @@ namespace GameBoy
     public class Cpu
     {
         // Registers
-        internal byte A, F, B, C, D, E, H, L;
         internal ushort SP, PC;
+
+        // LD instructions (and others?) specify registers according to this encoding:
+        //  111 - A
+        //  000 - B
+        //  001 - C
+        //  010 - D
+        //  011 - E
+        //  100 - H
+        //  101 - L
+        //  110 - (HL)
+        // If we add 1 to the encoding, we get a contiguous array for the registers, with a special value of 7 for the value at address HL
+        internal byte[] registers = new byte[7];
+        internal byte F;
+
+        internal enum RegisterEncoding
+        {
+            B = 0b000,
+            C = 0b001,
+            D = 0b010,
+            E = 0b011,
+            H = 0b100,
+            L = 0b101,
+            HLderef = 0b110,
+            A = 0b111
+        }
+
+        internal static int RegisterEncodingToIndex(RegisterEncoding encoding) => ((int)encoding + 1) & 0x7;
+
+        internal byte A
+        {
+            get
+            {
+                return registers[RegisterEncodingToIndex(RegisterEncoding.A)];
+            }
+            set
+            {
+                registers[RegisterEncodingToIndex(RegisterEncoding.A)] = value;
+            }
+        }
+
+        internal byte B
+        {
+            get
+            {
+                return registers[RegisterEncodingToIndex(RegisterEncoding.B)];
+            }
+            set
+            {
+                registers[RegisterEncodingToIndex(RegisterEncoding.B)] = value;
+            }
+        }
+
+        internal byte C
+        {
+            get
+            {
+                return registers[RegisterEncodingToIndex(RegisterEncoding.C)];
+            }
+            set
+            {
+                registers[RegisterEncodingToIndex(RegisterEncoding.C)] = value;
+            }
+        }
+
+        internal byte D
+        {
+            get
+            {
+                return registers[RegisterEncodingToIndex(RegisterEncoding.D)];
+            }
+            set
+            {
+                registers[RegisterEncodingToIndex(RegisterEncoding.D)] = value;
+            }
+        }
+
+        internal byte E
+        {
+            get
+            {
+                return registers[RegisterEncodingToIndex(RegisterEncoding.E)];
+            }
+            set
+            {
+                registers[RegisterEncodingToIndex(RegisterEncoding.E)] = value;
+            }
+        }
+
+        internal byte H
+        {
+            get
+            {
+                return registers[RegisterEncodingToIndex(RegisterEncoding.H)];
+            }
+            set
+            {
+                registers[RegisterEncodingToIndex(RegisterEncoding.H)] = value;
+            }
+        }
+
+        internal byte L
+        {
+            get
+            {
+                return registers[RegisterEncodingToIndex(RegisterEncoding.L)];
+            }
+            set
+            {
+                registers[RegisterEncodingToIndex(RegisterEncoding.L)] = value;
+            }
+        }
 
         // Combined registers
         internal ushort AF
@@ -197,217 +307,6 @@ namespace GameBoy
                     A = memory.Read(++PC);
                     cyclesUsed += 4;
                     break;
-                // LD B, register
-                case 0x40:
-                    // LD B, B
-                    break;
-                case 0x41:
-                    B = C;
-                    break;
-                case 0x42:
-                    B = D;
-                    break;
-                case 0x43:
-                    B = E;
-                    break;
-                case 0x44:
-                    B = H;
-                    break;
-                case 0x45:
-                    B = L;
-                    break;
-                case 0x46:
-                    B = memory.Read(HL);
-                    cyclesUsed += 4;
-                    break;
-                case 0x47:
-                    B = A;
-                    break;
-                // LD C, register
-                case 0x48:
-                    C = B;
-                    break;
-                case 0x49:
-                    // LD C, C
-                    break;
-                case 0x4A:
-                    C = D;
-                    break;
-                case 0x4B:
-                    C = E;
-                    break;
-                case 0x4C:
-                    C = H;
-                    break;
-                case 0x4D:
-                    C = L;
-                    break;
-                case 0x4E:
-                    C = memory.Read(HL);
-                    cyclesUsed += 4;
-                    break;
-                case 0x4F:
-                    C = A;
-                    break;
-                // LD D, register
-                case 0x50:
-                    D = B;
-                    break;
-                case 0x51:
-                    D = C;
-                    break;
-                case 0x52:
-                    // LD D, D
-                    break;
-                case 0x53:
-                    D = E;
-                    break;
-                case 0x54:
-                    D = H;
-                    break;
-                case 0x55:
-                    D = L;
-                    break;
-                case 0x56:
-                    D = memory.Read(HL);
-                    cyclesUsed += 4;
-                    break;
-                case 0x57:
-                    D = A;
-                    break;
-                // LD E, register
-                case 0x58:
-                    E = B;
-                    break;
-                case 0x59:
-                    E = C;
-                    break;
-                case 0x5A:
-                    E = D;
-                    break;
-                case 0x5B:
-                    // LD E, E
-                    break;
-                case 0x5C:
-                    E = H;
-                    break;
-                case 0x5D:
-                    E = L;
-                    break;
-                case 0x5E:
-                    E = memory.Read(HL);
-                    cyclesUsed += 4;
-                    break;
-                case 0x5F:
-                    E = A;
-                    break;
-                // LD H, register
-                case 0x60:
-                    H = B;
-                    break;
-                case 0x61:
-                    H = C;
-                    break;
-                case 0x62:
-                    H = D;
-                    break;
-                case 0x63:
-                    H = E;
-                    break;
-                case 0x64:
-                    // LD H, H
-                    break;
-                case 0x65:
-                    H = L;
-                    break;
-                case 0x66:
-                    H = memory.Read(HL);
-                    cyclesUsed += 4;
-                    break;
-                case 0x67:
-                    H = A;
-                    break;
-                // LD L, register
-                case 0x68:
-                    L = B;
-                    break;
-                case 0x69:
-                    L = C;
-                    break;
-                case 0x6A:
-                    L = D;
-                    break;
-                case 0x6B:
-                    L = E;
-                    break;
-                case 0x6C:
-                    L = H;
-                    break;
-                case 0x6D:
-                    // LD L, L
-                    break;
-                case 0x6E:
-                    L = memory.Read(HL);
-                    cyclesUsed += 4;
-                    break;
-                case 0x6F:
-                    L = A;
-                    break;
-                // LD (HL), register
-                case 0x70:
-                    memory.Write(HL, B);
-                    cyclesUsed += 4;
-                    break;
-                case 0x71:
-                    memory.Write(HL, C);
-                    cyclesUsed += 4;
-                    break;
-                case 0x72:
-                    memory.Write(HL, D);
-                    cyclesUsed += 4;
-                    break;
-                case 0x73:
-                    memory.Write(HL, E);
-                    cyclesUsed += 4;
-                    break;
-                case 0x74:
-                    memory.Write(HL, H);
-                    cyclesUsed += 4;
-                    break;
-                case 0x75:
-                    memory.Write(HL, L);
-                    cyclesUsed += 4;
-                    break;
-                case 0x77:
-                    memory.Write(HL, A);
-                    cyclesUsed += 4;
-                    break;
-                // LD A, register
-                case 0x78:
-                    A = B;
-                    break;
-                case 0x79:
-                    A = C;
-                    break;
-                case 0x7A:
-                    A = D;
-                    break;
-                case 0x7B:
-                    A = E;
-                    break;
-                case 0x7C:
-                    A = H;
-                    break;
-                case 0x7D:
-                    A = L;
-                    break;
-                case 0x7E:
-                    A = memory.Read(HL);
-                    cyclesUsed += 4;
-                    break;
-                case 0x7F:
-                    // LD A, A
-                    break;
                 case 0xEA:
                     // LD (nn), A
                     // Least significant byte first
@@ -419,6 +318,42 @@ namespace GameBoy
                     // Least significant byte first
                     A = memory.Read((ushort)(memory.Read(++PC) | memory.Read(++PC) << 8));
                     cyclesUsed += 12;
+                    break;
+
+                default:
+                    // Execute generalized instructions based on operand encodings extracted from the opcode
+                    byte subInstruction = (byte)((instruction >> 6) & 0x3);
+                    switch (subInstruction)
+                    {
+                        case 0x1: // LD
+                            var target = (RegisterEncoding)((instruction >> 3) & 0x7);
+                            var source = (RegisterEncoding)((instruction) & 0x7);
+
+                            if (RegisterEncoding.HLderef == target)
+                            {
+                                // Confirm that 0x76 isn't a valid instruction, which would be ld (HL), HL
+                                // presumably it does something else
+                                memory.Write(HL, registers[RegisterEncodingToIndex(source)]);
+                                cyclesUsed += 4;
+                            }
+                            else
+                            {
+                                int iTargetRegister = RegisterEncodingToIndex(target);
+                                if (RegisterEncoding.HLderef == source)
+                                {
+                                    registers[iTargetRegister] = memory.Read(HL);
+                                    cyclesUsed += 4;
+                                }
+                                else
+                                {
+                                    registers[iTargetRegister] = registers[RegisterEncodingToIndex(source)];
+                                }
+                            }
+                            break;
+
+                        default:
+                            throw new Exception($"Instruction not implemented: {instruction}");
+                    }
                     break;
             }
 
