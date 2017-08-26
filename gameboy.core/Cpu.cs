@@ -264,47 +264,15 @@ namespace GameBoy
                 case 0x02:
                     memory.Write(BC, A);
                     break;
-                case 0x06:
-                    B = memory.Read(++PC);
-                    cyclesUsed += 4;
-                    break;
                 case 0x0A:
                     A = memory.Read(BC);
-                    cyclesUsed += 4;
-                    break;
-                case 0x0E:
-                    C = memory.Read(++PC);
                     cyclesUsed += 4;
                     break;
                 case 0x12:
                     memory.Write(DE, A);
                     break;
-                case 0x16:
-                    D = memory.Read(++PC);
-                    cyclesUsed += 4;
-                    break;
                 case 0x1A:
                     A = memory.Read(DE);
-                    cyclesUsed += 4;
-                    break;
-                case 0x1E:
-                    E = memory.Read(++PC);
-                    cyclesUsed += 4;
-                    break;
-                case 0x26:
-                    H = memory.Read(++PC);
-                    cyclesUsed += 4;
-                    break;
-                case 0x2E:
-                    L = memory.Read(++PC);
-                    cyclesUsed += 4;
-                    break;
-                case 0x36:
-                    memory.Write(HL, memory.Read(++PC));
-                    cyclesUsed += 8;
-                    break;
-                case 0x3E:
-                    A = memory.Read(++PC);
                     cyclesUsed += 4;
                     break;
                 case 0xEA:
@@ -325,28 +293,54 @@ namespace GameBoy
                     byte subInstruction = (byte)((instruction >> 6) & 0x3);
                     switch (subInstruction)
                     {
-                        case 0x1: // LD
-                            var target = (RegisterEncoding)((instruction >> 3) & 0x7);
-                            var source = (RegisterEncoding)((instruction) & 0x7);
-
-                            if (RegisterEncoding.HLderef == target)
+                        case 0x0:
                             {
-                                // Confirm that 0x76 isn't a valid instruction, which would be ld (HL), HL
-                                // presumably it does something else
-                                memory.Write(HL, registers[RegisterEncodingToIndex(source)]);
-                                cyclesUsed += 4;
-                            }
-                            else
-                            {
-                                int iTargetRegister = RegisterEncodingToIndex(target);
-                                if (RegisterEncoding.HLderef == source)
+                                if ((int)(instruction & 0x7) == 0b110) // LD immediate
                                 {
-                                    registers[iTargetRegister] = memory.Read(HL);
+                                    var target = (RegisterEncoding)((instruction >> 3) & 0x7);
+                                    var value = memory.Read(++PC);
+                                    cyclesUsed += 4;
+                                    if (RegisterEncoding.HLderef == target)
+                                    {
+                                        memory.Write(HL, value);
+                                        cyclesUsed += 4;
+                                        // TODO: Validate that this is the cost of this instruction.
+                                    }
+                                    else
+                                    {
+                                        registers[RegisterEncodingToIndex(target)] = value;
+                                    }
+                                }
+                                else
+                                {
+                                    throw new Exception($"Instruction not implemented {instruction}");
+                                }
+                            }
+                            break;
+                        case 0x1: // LD
+                            {
+                                var target = (RegisterEncoding)((instruction >> 3) & 0x7);
+                                var source = (RegisterEncoding)((instruction) & 0x7);
+
+                                if (RegisterEncoding.HLderef == target)
+                                {
+                                    // Confirm that 0x76 isn't a valid instruction, which would be ld (HL), HL
+                                    // presumably it does something else
+                                    memory.Write(HL, registers[RegisterEncodingToIndex(source)]);
                                     cyclesUsed += 4;
                                 }
                                 else
                                 {
-                                    registers[iTargetRegister] = registers[RegisterEncodingToIndex(source)];
+                                    int iTargetRegister = RegisterEncodingToIndex(target);
+                                    if (RegisterEncoding.HLderef == source)
+                                    {
+                                        registers[iTargetRegister] = memory.Read(HL);
+                                        cyclesUsed += 4;
+                                    }
+                                    else
+                                    {
+                                        registers[iTargetRegister] = registers[RegisterEncodingToIndex(source)];
+                                    }
                                 }
                             }
                             break;

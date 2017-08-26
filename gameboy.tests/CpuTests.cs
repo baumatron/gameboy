@@ -515,15 +515,51 @@ namespace GameBoyTests
             cpu.memory.Write(pc++, (byte)(baseOpCode + 0x05));
             testTasks.Add(() => TestLDToHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)]));
 
-            // LD (HL), immediate
-            cpu.memory.Write(pc++, 0x36);
-            cpu.memory.Write(pc++, 0x63);
-            byte expected = 0x63;
-            testTasks.Add(() => TestLDToHLAddress(cpu, ref expected));
-
             foreach (var task in testTasks)
             {
                 task();
+            }
+        }
+
+        [Fact]
+        public void TestLDImmediate()
+        {
+            var cpu = new GameBoy.Cpu();
+            cpu.Init();
+
+            // Set up some test data for address loads
+            ushort pc = 0x100;
+            const ushort testLoadAddress = 0x0001;
+            const byte immediateValue = 0x1A;
+
+            for (int registerEncoding = 0; registerEncoding <= 7; ++registerEncoding)
+            {
+                byte instruction = (byte)(registerEncoding << 3 | 0b110);
+                cpu.memory.Write(pc++, instruction);
+                cpu.memory.Write(pc++, immediateValue);
+
+                Cpu.RegisterEncoding encoding = (Cpu.RegisterEncoding)registerEncoding;
+
+                // Prep the HL register with an address to load into
+                if (encoding == Cpu.RegisterEncoding.HLderef)
+                {
+                    // LD (HL), n
+                    cpu.HL = testLoadAddress;
+                }
+
+                cpu.ExecuteNextInstruction();
+
+                // Validate cpu state
+                if (encoding == Cpu.RegisterEncoding.HLderef)
+                {
+                    // LD (HL), n
+                    Assert.Equal(immediateValue, cpu.memory.Read(testLoadAddress));
+                }
+                else
+                {
+                    // LD register, n
+                    Assert.Equal(immediateValue, cpu.registers[Cpu.RegisterEncodingToIndex(encoding)]);
+                }
             }
         }
     }
