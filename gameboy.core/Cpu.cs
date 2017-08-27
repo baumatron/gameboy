@@ -326,7 +326,7 @@ namespace GameBoy
                                 }
                                 else
                                 {
-                                    throw new Exception($"Instruction not implemented {instruction}");
+                                    throw new Exception($"Instruction not implemented 0x{instruction:X2}");
                                 }
                             }
                             break;
@@ -359,7 +359,7 @@ namespace GameBoy
                             break;
 
                         default:
-                            throw new Exception($"Instruction not implemented: {instruction}");
+                            throw new Exception($"Instruction not implemented: 0x{instruction:X2}");
                     }
                     break;
             }

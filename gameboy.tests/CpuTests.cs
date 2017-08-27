@@ -672,5 +672,81 @@ namespace GameBoyTests
             Assert.Equal(pc, cpu.PC);
             Assert.Equal(cyclesUsed, cpu.clock - startingClock);
         }
+
+        internal void DoLDFromHLAddressToATest(byte instruction, int hlOffsetAfterLoad)
+        {
+            var cpu = new Cpu();
+            cpu.Init();
+
+            int startingClock = cpu.clock;
+            const int cyclesUsed = 8;
+
+            ushort pc = 0x100;
+            const ushort testLoadAddress = 0xF000;
+            const byte testValue = 0x65;
+
+            cpu.memory.Write(pc++, instruction);
+            cpu.HL = testLoadAddress;
+            cpu.memory.Write(testLoadAddress, testValue);
+
+            Assert.NotEqual(testValue, cpu.A);
+
+            cpu.ExecuteNextInstruction();
+
+            Assert.Equal(testValue, cpu.A);
+            Assert.Equal(pc, cpu.PC);
+            Assert.Equal(testLoadAddress + hlOffsetAfterLoad, cpu.HL);
+            Assert.Equal(cyclesUsed, cpu.clock - startingClock);
+        }
+
+        [Fact]
+        public void TestLDFromHLAddressToAAndDecrement()
+        {
+            DoLDFromHLAddressToATest(0x3A, -1);
+        }
+
+        [Fact]
+        public void TestLDFromHLAddressToAAndIncrement()
+        {
+            DoLDFromHLAddressToATest(0x2A, -1);
+        }
+
+        internal void DoLDFromAToHLAddressTest(byte instruction, int hlOffsetAfterLoad)
+        {
+            var cpu = new Cpu();
+            cpu.Init();
+
+            int startingClock = cpu.clock;
+            const int cyclesUsed = 8;
+
+            ushort pc = 0x100;
+            const ushort testLoadAddress = 0xF000;
+            const byte testValue = 0x65;
+
+            cpu.memory.Write(pc++, instruction);
+            cpu.HL = testLoadAddress;
+            cpu.A = testValue;
+
+            Assert.NotEqual(testValue, cpu.memory.Read(testLoadAddress));
+
+            cpu.ExecuteNextInstruction();
+
+            Assert.Equal(testValue, cpu.memory.Read(testLoadAddress));
+            Assert.Equal(pc, cpu.PC);
+            Assert.Equal(testLoadAddress + hlOffsetAfterLoad, cpu.HL);
+            Assert.Equal(cyclesUsed, cpu.clock - startingClock);
+        }
+
+        [Fact]
+        public void TestLDFromAToHLAddressAndDecrement()
+        {
+            DoLDFromAToHLAddressTest(0x32, -1);
+        }
+
+        [Fact]
+        public void TestLDFromAToHLAddressAndIncrement()
+        {
+            DoLDFromAToHLAddressTest(0x22, 1);
+        }
     }
 }
