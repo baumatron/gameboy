@@ -801,6 +801,7 @@ namespace GameBoyTests
                 : base(instruction)
             {
                 _GetRegisterValue = GetRegisterValue;
+                _expectedClockCycles = 12;
             }
 
             public override void PrepareTest()
@@ -826,8 +827,6 @@ namespace GameBoyTests
             }
 
             readonly Func<Cpu, ushort> _GetRegisterValue;
-
-            public override int ExpectedClockCycles => 12;
         };
 
         [Fact]
@@ -858,37 +857,16 @@ namespace GameBoyTests
             runner.Run();
         }
 
-        class LoadFromHLToSPTest : InstructionTest
-        {
-            public LoadFromHLToSPTest()
-                : base(0xF9)
-                {}
-
-            public override void PrepareTest()
-            {
-                base.PrepareTest();
-                _cpu.HL = _testWord;
-            }
-
-            public override void ValidatePreExecute()
-            {
-                base.ValidatePreExecute();
-                Assert.NotEqual(_cpu.HL, _cpu.SP);
-            }
-
-            public override void ValidatePostExecute()
-            {
-                base.ValidatePostExecute();
-                Assert.Equal(_cpu.HL, _cpu.SP);
-            }
-
-            public override int ExpectedClockCycles => 8;
-        };
-
         [Fact]
         public void TestLoadFromHLToSP()
         {
-            var runner = new InstructionTestRunner(new LoadFromHLToSPTest());
+            ushort testWord = 0x1234;
+            var test = new InstructionTest(0xF9)
+                .WithTestPreparation(cpu => cpu.HL = testWord)
+                .WithPreValidation(cpu => Assert.NotEqual(cpu.HL, cpu.SP))
+                .WithPostValidation(cpu => Assert.Equal(cpu.HL, cpu.SP))
+                .WithClockCycles(8);
+            var runner = new InstructionTestRunner(test);
             runner.Run();
         }
     }
