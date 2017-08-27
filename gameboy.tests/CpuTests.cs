@@ -553,7 +553,6 @@ namespace GameBoyTests
             cpu.Init();
 
             int startingClock = cpu.clock;
-            const int expectedCycles = 8;
 
             // Set up some test data for address loads
             ushort pc = 0x100;
@@ -575,7 +574,7 @@ namespace GameBoyTests
             // Value from memory should be stored in A
             Assert.Equal(testValue, cpu.A);
 
-            Assert.Equal(expectedCycles, cpu.clock - startingClock);
+            Assert.Equal(8, cpu.clock - startingClock);
 
             Assert.Equal(pc, cpu.PC);
         }
@@ -587,7 +586,6 @@ namespace GameBoyTests
             cpu.Init();
 
             int startingClock = cpu.clock;
-            const int expectedCycles = 8;
 
             // Set up some test data for address loads
             ushort pc = 0x100;
@@ -614,7 +612,7 @@ namespace GameBoyTests
 
             Assert.Equal(oldF, cpu.F);
 
-            Assert.Equal(expectedCycles, cpu.clock - startingClock);
+            Assert.Equal(8, cpu.clock - startingClock);
 
             Assert.Equal(pc, cpu.PC);
         }
@@ -626,7 +624,6 @@ namespace GameBoyTests
             cpu.Init();
 
             int startingClock = cpu.clock;
-            const int expectedCycles = 8;
 
             ushort pc = 0x100;
             const byte addressOffset = 0x12;
@@ -643,7 +640,7 @@ namespace GameBoyTests
 
             Assert.Equal(testValue, cpu.A);
             Assert.Equal(pc, cpu.PC);
-            Assert.Equal(expectedCycles, cpu.clock - startingClock);
+            Assert.Equal(8, cpu.clock - startingClock);
         }
 
         [Fact]
@@ -653,7 +650,6 @@ namespace GameBoyTests
             cpu.Init();
 
             int startingClock = cpu.clock;
-            const int cyclesUsed = 8;
 
             ushort pc = 0x100;
             const byte addressOffset = 0x12;
@@ -670,7 +666,7 @@ namespace GameBoyTests
 
             Assert.Equal(testValue, cpu.memory.Read(testLoadAddress));
             Assert.Equal(pc, cpu.PC);
-            Assert.Equal(cyclesUsed, cpu.clock - startingClock);
+            Assert.Equal(8, cpu.clock - startingClock);
         }
 
         internal void DoLDFromHLAddressToATest(byte instruction, int hlOffsetAfterLoad)
@@ -679,7 +675,6 @@ namespace GameBoyTests
             cpu.Init();
 
             int startingClock = cpu.clock;
-            const int cyclesUsed = 8;
 
             ushort pc = 0x100;
             const ushort testLoadAddress = 0xF000;
@@ -696,7 +691,7 @@ namespace GameBoyTests
             Assert.Equal(testValue, cpu.A);
             Assert.Equal(pc, cpu.PC);
             Assert.Equal(testLoadAddress + hlOffsetAfterLoad, cpu.HL);
-            Assert.Equal(cyclesUsed, cpu.clock - startingClock);
+            Assert.Equal(8, cpu.clock - startingClock);
         }
 
         [Fact]
@@ -717,7 +712,6 @@ namespace GameBoyTests
             cpu.Init();
 
             int startingClock = cpu.clock;
-            const int cyclesUsed = 8;
 
             ushort pc = 0x100;
             const ushort testLoadAddress = 0xF000;
@@ -734,7 +728,7 @@ namespace GameBoyTests
             Assert.Equal(testValue, cpu.memory.Read(testLoadAddress));
             Assert.Equal(pc, cpu.PC);
             Assert.Equal(testLoadAddress + hlOffsetAfterLoad, cpu.HL);
-            Assert.Equal(cyclesUsed, cpu.clock - startingClock);
+            Assert.Equal(8, cpu.clock - startingClock);
         }
 
         [Fact]
@@ -747,6 +741,58 @@ namespace GameBoyTests
         public void TestLDFromAToHLAddressAndIncrement()
         {
             DoLDFromAToHLAddressTest(0x22, 1);
+        }
+
+        [Fact]
+        public void TestLoadFromAToImmediateByte()
+        {
+            var cpu = new Cpu();
+            cpu.Init();
+
+            int startingClock = cpu.clock;
+
+            ushort pc = 0x100;
+            const byte offset = 0x35;
+            const ushort testLoadAddress = 0xF000 + offset;
+            const byte testValue = 0x65;
+
+            cpu.memory.Write(pc++, 0xE0);
+            cpu.memory.Write(pc++, offset);
+            cpu.A = testValue;
+
+            Assert.NotEqual(testValue, cpu.memory.Read(testLoadAddress));
+
+            cpu.ExecuteNextInstruction();
+
+            Assert.Equal(testValue, cpu.memory.Read(testLoadAddress));
+            Assert.Equal(pc, cpu.PC);
+            Assert.Equal(12, cpu.clock - startingClock);
+        }
+
+        [Fact]
+        public void TestLoadFromImmediateByteToA()
+        {
+            var cpu = new Cpu();
+            cpu.Init();
+
+            int startingClock = cpu.clock;
+
+            ushort pc = 0x100;
+            const byte offset = 0x35;
+            const ushort testLoadAddress = 0xF000 + offset;
+            const byte testValue = 0x65;
+
+            cpu.memory.Write(pc++, 0xF0);
+            cpu.memory.Write(pc++, offset);
+            cpu.memory.Write(testLoadAddress, testValue);
+
+            Assert.NotEqual(testValue, cpu.A);
+
+            cpu.ExecuteNextInstruction();
+
+            Assert.Equal(testValue, cpu.A);
+            Assert.Equal(pc, cpu.PC);
+            Assert.Equal(12, cpu.clock - startingClock);
         }
     }
 }
