@@ -708,7 +708,7 @@ namespace GameBoyTests
         [Fact]
         public void TestLDFromHLAddressToAAndIncrement()
         {
-            DoLDFromHLAddressToATest(0x2A, -1);
+            DoLDFromHLAddressToATest(0x2A, 1);
         }
 
         internal void DoLDFromAToHLAddressTest(byte instruction, int hlOffsetAfterLoad)

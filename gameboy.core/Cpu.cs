@@ -278,6 +278,26 @@ namespace GameBoy
                     A = memory.Read(DE);
                     cyclesUsed += 4;
                     break;
+                case 0x22:
+                    // LDI (HL), A
+                    memory.Write(HL++, A);
+                    cyclesUsed += 4;
+                    break;
+                case 0x2A:
+                    // LDI A, (HL)
+                    A = memory.Read(HL++);
+                    cyclesUsed += 4;
+                    break;
+                case 0x32:
+                    // LDD (HL), A
+                    memory.Write(HL--, A);
+                    cyclesUsed += 4;
+                    break;
+                case 0x3A:
+                    // LDD A, (HL)
+                    A = memory.Read(HL--);
+                    cyclesUsed += 4;
+                    break;
                 case 0xE2:
                     // LD (0xFF00 + C), A
                     memory.Write((ushort)(0xFF00 + C), A);
