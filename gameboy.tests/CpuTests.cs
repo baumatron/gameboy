@@ -794,5 +794,51 @@ namespace GameBoyTests
             Assert.Equal(pc, cpu.PC);
             Assert.Equal(12, cpu.clock - startingClock);
         }
+
+        class LoadImmediateWordToRegistersTest : InstructionTest
+        {
+            public LoadImmediateWordToRegistersTest(byte instruction, Func<Cpu, ushort> GetRegisterValue)
+                : base()
+            {
+                _instruction = instruction;
+                _GetRegisterValue = GetRegisterValue;
+            }
+
+            public override void PrepareTest()
+            {
+                base.PrepareTest();
+
+                _cpu.memory.Write(_testPc++, _instruction);
+                _cpu.memory.Write(_testPc++, _testValue & 0xFF);
+                _cpu.memory.Write(_testPc++, _testValue >> 8);
+            }
+
+            public override void ValidatePreExecute()
+            {
+                Assert.NotEqual(_testValue, _GetRegisterValue(_cpu));
+            }
+
+            public override void ValidatePostExecute()
+            {
+                base.ValidatePostExecute();
+
+                Assert.Equal(_testValue, _GetRegisterValue(_cpu));
+            }
+
+            const ushort _testValue = 0x6532;
+
+            readonly byte _instruction;
+
+            readonly Func<Cpu, ushort> _GetRegisterValue;
+
+            public override int ExpectedClockCycles => 12;
+        };
+
+        [Fact]
+        public void TestLoadImmediateWordToBC()
+        {
+            var runner = new InstructionTestRunner(new LoadImmediateWordToRegistersTest(0x01, x => x.BC));
+            runner.Run();
+        }
     }
 }

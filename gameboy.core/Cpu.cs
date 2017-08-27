@@ -260,6 +260,11 @@ namespace GameBoy
 
             switch (instruction)
             {
+                case 0x01:
+                    // LD BC, nn
+                    BC = (ushort)(memory.Read(++PC) | (memory.Read(++PC) << 8));
+                    cyclesUsed += 8;
+                    break;
                 case 0x02:
                     // LD (BC), A
                     memory.Write(BC, A);
