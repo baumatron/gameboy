@@ -1,5 +1,5 @@
-# Ignore vscode code browsing db
-.vscode/*.db*
+# Ignore vscode code stuff
+.vscode/
 
 # Ignore object output
 bin/
