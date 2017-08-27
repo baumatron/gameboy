@@ -269,6 +269,11 @@ namespace GameBoy
                     // LD (BC), A
                     memory.Write(BC, A);
                     break;
+                case 0x08:
+                    memory.WriteWord(memory.ReadWord(++PC), SP);
+                    PC++;
+                    cyclesUsed += 16;
+                    break;
                 case 0x0A:
                     // LD A, (BC)
                     A = memory.Read(BC);
@@ -342,6 +347,16 @@ namespace GameBoy
                 case 0xF0:
                     // LDH A, (0xFF00 + n)
                     A = memory.Read((ushort)(0xFF00 + memory.Read(++PC)));
+                    cyclesUsed += 8;
+                    break;
+                case 0xF8:
+                    // LD HL, SP+n
+                    int lhs = SP;
+                    int rhs = (sbyte)memory.Read(++PC);
+                    HL = (ushort)(lhs + rhs);
+                    F = 0; // Clear flags
+                    flagH = GetHalfCarryFlagsForAdd(lhs, rhs);
+                    flagC = GetCarryFlagsForAdd(lhs, rhs);
                     cyclesUsed += 8;
                     break;
                 case 0xF9:
@@ -424,6 +439,16 @@ namespace GameBoy
 
             // Increment the clock by the number of cycles used
             clock += cyclesUsed;
+        }
+
+        bool GetHalfCarryFlagsForAdd(int lhs, int rhs)
+        {
+            return (((lhs & 0x0F) + (rhs & 0x0F)) & 0xF0) > 0;
+        }
+
+        bool GetCarryFlagsForAdd(int lhs, int rhs)
+        {
+            return (((lhs & 0x00FF) + (rhs & 0x00FF)) & 0xFF00) > 0;
         }
     }
 }

@@ -869,5 +869,205 @@ namespace GameBoyTests
             var runner = new InstructionTestRunner(test);
             runner.Run();
         }
+
+        [Fact]
+        public void TestLoadFromSPAndImmediateToHLBothCarries()
+        {
+            ushort testWord = 0x12FF;
+            sbyte testOffset = 1;
+            var test = new InstructionTest(0xF8)
+                .WithImmediateByte((byte)testOffset)
+                .WithTestPreparation(cpu =>
+                {
+                    cpu.SP = testWord;
+                    cpu.flagZ = true;
+                    cpu.flagN = true;
+                })
+                .WithPreValidation(cpu =>
+                {
+                    Assert.NotEqual(cpu.HL, cpu.SP + testOffset);
+                    Assert.Equal(cpu.flagZ, true);
+                    Assert.Equal(cpu.flagN, true);
+                    Assert.Equal(cpu.flagH, false);
+                    Assert.Equal(cpu.flagC, false);
+                })
+                .WithPostValidation(cpu =>
+                {
+                    Assert.Equal((int)cpu.HL, (int)cpu.SP + (int)testOffset);
+                    Assert.Equal(cpu.flagZ, false);
+                    Assert.Equal(cpu.flagN, false);
+                    Assert.Equal(cpu.flagH, true);
+                    Assert.Equal(cpu.flagC, true);
+                })
+                .WithClockCycles(12);
+
+            var runner = new InstructionTestRunner(test);
+            runner.Run();
+        }
+
+        [Fact]
+        public void TestLoadFromSPAndImmediateToHLHalfCarry()
+        {
+            ushort testWord = 0x12EF;
+            sbyte testOffset = 1;
+            var test = new InstructionTest(0xF8)
+                .WithImmediateByte((byte)testOffset)
+                .WithTestPreparation(cpu =>
+                {
+                    cpu.SP = testWord;
+                    cpu.flagZ = true;
+                    cpu.flagN = true;
+                })
+                .WithPreValidation(cpu =>
+                {
+                    Assert.NotEqual(cpu.HL, cpu.SP + testOffset);
+                    Assert.Equal(cpu.flagZ, true);
+                    Assert.Equal(cpu.flagN, true);
+                    Assert.Equal(cpu.flagH, false);
+                    Assert.Equal(cpu.flagC, false);
+                })
+                .WithPostValidation(cpu =>
+                {
+                    Assert.Equal((int)cpu.HL, (int)cpu.SP + (int)testOffset);
+                    Assert.Equal(cpu.flagZ, false);
+                    Assert.Equal(cpu.flagN, false);
+                    Assert.Equal(cpu.flagH, true);
+                    Assert.Equal(cpu.flagC, false);
+                })
+                .WithClockCycles(12);
+
+            var runner = new InstructionTestRunner(test);
+            runner.Run();
+        }
+
+        [Fact]
+        public void TestLoadFromSPAndImmediateToHLFullCarry()
+        {
+            ushort testWord = 0x12FF;
+            sbyte testOffset = 0x10;
+            var test = new InstructionTest(0xF8)
+                .WithImmediateByte((byte)testOffset)
+                .WithTestPreparation(cpu =>
+                {
+                    cpu.SP = testWord;
+                    cpu.flagZ = true;
+                    cpu.flagN = true;
+                })
+                .WithPreValidation(cpu =>
+                {
+                    Assert.NotEqual(cpu.HL, cpu.SP + testOffset);
+                    Assert.Equal(cpu.flagZ, true);
+                    Assert.Equal(cpu.flagN, true);
+                    Assert.Equal(cpu.flagH, false);
+                    Assert.Equal(cpu.flagC, false);
+                })
+                .WithPostValidation(cpu =>
+                {
+                    Assert.Equal((int)cpu.HL, (int)cpu.SP + (int)testOffset);
+                    Assert.Equal(cpu.flagZ, false);
+                    Assert.Equal(cpu.flagN, false);
+                    Assert.Equal(cpu.flagH, false);
+                    Assert.Equal(cpu.flagC, true);
+                })
+                .WithClockCycles(12);
+
+            var runner = new InstructionTestRunner(test);
+            runner.Run();
+        }
+
+        [Fact]
+        public void TestLoadFromSPAndImmediateToHLNoCarry()
+        {
+            ushort testWord = 0x12EE;
+            sbyte testOffset = 0x11;
+            var test = new InstructionTest(0xF8)
+                .WithImmediateByte((byte)testOffset)
+                .WithTestPreparation(cpu =>
+                {
+                    cpu.SP = testWord;
+                    cpu.flagZ = true;
+                    cpu.flagN = true;
+                })
+                .WithPreValidation(cpu =>
+                {
+                    Assert.NotEqual(cpu.HL, cpu.SP + testOffset);
+                    Assert.Equal(cpu.flagZ, true);
+                    Assert.Equal(cpu.flagN, true);
+                    Assert.Equal(cpu.flagH, false);
+                    Assert.Equal(cpu.flagC, false);
+                })
+                .WithPostValidation(cpu =>
+                {
+                    Assert.Equal(cpu.HL, cpu.SP + testOffset);
+                    Assert.Equal(cpu.flagZ, false);
+                    Assert.Equal(cpu.flagN, false);
+                    Assert.Equal(cpu.flagH, false);
+                    Assert.Equal(cpu.flagC, false);
+                })
+                .WithClockCycles(12);
+
+            var runner = new InstructionTestRunner(test);
+            runner.Run();
+        }
+
+        [Fact]
+        public void TestLoadFromSPAndImmediateToHLNegativeImmediate()
+        {
+            ushort testWord = 0x12EE;
+            sbyte testOffset = -1;
+            var test = new InstructionTest(0xF8)
+                .WithImmediateByte((byte)testOffset)
+                .WithTestPreparation(cpu =>
+                {
+                    cpu.SP = testWord;
+                    cpu.flagZ = true;
+                    cpu.flagN = true;
+                })
+                .WithPreValidation(cpu =>
+                {
+                    Assert.NotEqual(cpu.HL, cpu.SP + testOffset);
+                    Assert.Equal(cpu.flagZ, true);
+                    Assert.Equal(cpu.flagN, true);
+                    Assert.Equal(cpu.flagH, false);
+                    Assert.Equal(cpu.flagC, false);
+                })
+                .WithPostValidation(cpu =>
+                {
+                    Assert.Equal(cpu.HL, cpu.SP + testOffset);
+                    Assert.Equal(cpu.flagZ, false);
+                    Assert.Equal(cpu.flagN, false);
+                    Assert.Equal(cpu.flagH, true); // TODO: Verify absolutely that this is correct
+                    Assert.Equal(cpu.flagC, true);
+                })
+                .WithClockCycles(12);
+
+            var runner = new InstructionTestRunner(test);
+            runner.Run();
+        }
+
+        [Fact]
+        public void TestLoadFromSPToImmediateAddress()
+        {
+            ushort immediateAddress = 0x12EE;
+            ushort spValue = 0x4321;
+            var test = new InstructionTest(0x08)
+                .WithImmediateWord(immediateAddress)
+                .WithTestPreparation(cpu =>
+                {
+                    cpu.SP = spValue;
+                })
+                .WithPreValidation(cpu =>
+                {
+                    Assert.NotEqual(cpu.SP, cpu.memory.ReadWord(immediateAddress));
+                })
+                .WithPostValidation(cpu =>
+                {
+                    Assert.Equal(cpu.SP, cpu.memory.ReadWord(immediateAddress));
+                })
+                .WithClockCycles(20);
+
+            var runner = new InstructionTestRunner(test);
+            runner.Run();
+        }
     }
 }

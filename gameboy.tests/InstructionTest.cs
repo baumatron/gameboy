@@ -15,11 +15,11 @@ namespace GameBoyTests
             _startingClock = _cpu.clock;
 
             _testPc = 0x100;
+            _cpu.memory.Write(_testPc++, _instruction);
         }
 
         public virtual void PrepareTest()
         {
-            _cpu.memory.Write(_testPc++, _instruction);
             if (null != _prepareAction)
             {
                 _prepareAction(_cpu);
@@ -71,6 +71,25 @@ namespace GameBoyTests
         public InstructionTest WithClockCycles(int expectedClockCycles)
         {
             _expectedClockCycles = expectedClockCycles;
+            return this;
+        }
+
+        public InstructionTest WithMemory(ushort address, byte value)
+        {
+            _cpu.memory.Write(address, value);
+            return this;
+        }
+
+        public InstructionTest WithImmediateByte(byte value)
+        {
+            _cpu.memory.Write(_testPc++, value);
+            return this;
+        }
+
+        public InstructionTest WithImmediateWord(ushort value)
+        {
+            _cpu.memory.Write(_testPc++, (byte)(value & 0xFF));
+            _cpu.memory.Write(_testPc++, (byte)(value >> 8));
             return this;
         }
         protected Action<Cpu> _prepareAction;
