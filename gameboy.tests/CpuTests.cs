@@ -1069,5 +1069,54 @@ namespace GameBoyTests
             var runner = new InstructionTestRunner(test);
             runner.Run();
         }
+
+        public void TestPushRegisterWord(byte instruction, Func<Cpu, ushort> GetRegister, Action<Cpu, ushort> SetRegister)
+        {
+            ushort sp = 0x1234;
+            ushort registerWord = 0x4321;
+            var test = new InstructionTest(instruction)
+                .WithClockCycles(16)
+                .WithTestPreparation(cpu =>
+                {
+                    cpu.SP = sp;
+                    SetRegister(cpu, registerWord);
+                })
+                .WithPreValidation(cpu =>
+                {
+                    Assert.NotEqual(GetRegister(cpu), cpu.memory.ReadWord(sp));
+                })
+                .WithPostValidation(cpu =>
+                {
+                    Assert.Equal(GetRegister(cpu), cpu.memory.ReadWord(sp));
+                    Assert.Equal(sp + 2, cpu.SP);
+                });
+
+            var runner = new InstructionTestRunner(test);
+            runner.Run();
+        }
+
+        [Fact]
+        public void TestPushAF()
+        {
+            TestPushRegisterWord(0xF5, cpu => cpu.AF, (cpu, value) => cpu.AF = value);
+        }
+
+        [Fact]
+        public void TestPushBC()
+        {
+            TestPushRegisterWord(0xC5, cpu => cpu.BC, (cpu, value) => cpu.BC = value);
+        }
+
+        [Fact]
+        public void TestPushDE()
+        {
+            TestPushRegisterWord(0xD5, cpu => cpu.DE, (cpu, value) => cpu.DE = value);
+        }
+
+        [Fact]
+        public void TestPushHL()
+        {
+            TestPushRegisterWord(0xE5, cpu => cpu.HL, (cpu, value) => cpu.HL = value);
+        }
     }
 }

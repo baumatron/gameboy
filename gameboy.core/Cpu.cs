@@ -323,6 +323,16 @@ namespace GameBoy
                     A = memory.Read(HL--);
                     cyclesUsed += 4;
                     break;
+                case 0xC5:
+                    memory.WriteWord(SP, BC);
+                    SP += 2;
+                    cyclesUsed += 12;
+                    break;
+                case 0xD5:
+                    memory.WriteWord(SP, DE);
+                    SP += 2;
+                    cyclesUsed += 12;
+                    break;
                 case 0xE0:
                     // LDH (0xFF00 + n), A
                     memory.Write((ushort)(0xFF00 + memory.Read(++PC)), A);
@@ -333,21 +343,31 @@ namespace GameBoy
                     memory.Write((ushort)(0xFF00 + C), A);
                     cyclesUsed += 4;
                     break;
+                case 0xE5:
+                    memory.WriteWord(SP, HL);
+                    SP += 2;
+                    cyclesUsed += 12;
+                    break;
                 case 0xEA:
                     // LD (nn), A
                     // Least significant byte first
                     memory.Write((ushort)(memory.Read(++PC) | memory.Read(++PC) << 8), A);
                     cyclesUsed += 12;
                     break;
+                case 0xF0:
+                    // LDH A, (0xFF00 + n)
+                    A = memory.Read((ushort)(0xFF00 + memory.Read(++PC)));
+                    cyclesUsed += 8;
+                    break;
                 case 0xF2:
                     // LD A, (0xFF00 + C)
                     A = memory.Read((ushort)(0xFF00 + C));
                     cyclesUsed += 4;
                     break;
-                case 0xF0:
-                    // LDH A, (0xFF00 + n)
-                    A = memory.Read((ushort)(0xFF00 + memory.Read(++PC)));
-                    cyclesUsed += 8;
+                case 0xF5:
+                    memory.WriteWord(SP, AF);
+                    SP += 2;
+                    cyclesUsed += 12;
                     break;
                 case 0xF8:
                     // LD HL, SP+n
