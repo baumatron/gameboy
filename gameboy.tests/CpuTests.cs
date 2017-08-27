@@ -1088,7 +1088,7 @@ namespace GameBoyTests
                 .WithPostValidation(cpu =>
                 {
                     Assert.Equal(GetRegister(cpu), cpu.memory.ReadWord(sp));
-                    Assert.Equal(sp + 2, cpu.SP);
+                    Assert.Equal(sp - 2, cpu.SP);
                 });
 
             var runner = new InstructionTestRunner(test);
@@ -1117,6 +1117,55 @@ namespace GameBoyTests
         public void TestPushHL()
         {
             TestPushRegisterWord(0xE5, cpu => cpu.HL, (cpu, value) => cpu.HL = value);
+        }
+
+        public void TestPopRegisterWord(byte instruction, Func<Cpu, ushort> GetRegister)
+        {
+            ushort sp = 0x1234;
+            ushort registerWord = 0x4321;
+            var test = new InstructionTest(instruction)
+                .WithClockCycles(12)
+                .WithMemoryWord(sp, registerWord)
+                .WithTestPreparation(cpu =>
+                {
+                    cpu.SP = sp;
+                })
+                .WithPreValidation(cpu =>
+                {
+                    Assert.NotEqual(GetRegister(cpu), cpu.memory.ReadWord(sp));
+                })
+                .WithPostValidation(cpu =>
+                {
+                    Assert.Equal(GetRegister(cpu), cpu.memory.ReadWord(sp));
+                    Assert.Equal(sp + 2, cpu.SP);
+                });
+
+            var runner = new InstructionTestRunner(test);
+            runner.Run();
+        }
+
+        [Fact]
+        public void TestPopAF()
+        {
+            TestPopRegisterWord(0xF1, cpu => cpu.AF);
+        }
+
+        [Fact]
+        public void TestPopBC()
+        {
+            TestPopRegisterWord(0xC1, cpu => cpu.BC);
+        }
+
+        [Fact]
+        public void TestPopDE()
+        {
+            TestPopRegisterWord(0xD1, cpu => cpu.DE);
+        }
+
+        [Fact]
+        public void TestPopHL()
+        {
+            TestPopRegisterWord(0xE1, cpu => cpu.HL);
         }
     }
 }

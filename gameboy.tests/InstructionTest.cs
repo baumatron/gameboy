@@ -80,6 +80,12 @@ namespace GameBoyTests
             return this;
         }
 
+        public InstructionTest WithMemoryWord(ushort address, ushort value)
+        {
+            _cpu.memory.WriteWord(address, value);
+            return this;
+        }
+
         public InstructionTest WithImmediateByte(byte value)
         {
             _cpu.memory.Write(_testPc++, value);

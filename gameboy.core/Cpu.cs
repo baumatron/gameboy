@@ -323,19 +323,37 @@ namespace GameBoy
                     A = memory.Read(HL--);
                     cyclesUsed += 4;
                     break;
+                case 0xC1:
+                    // POP BC
+                    BC = memory.ReadWord(SP);
+                    SP += 2;
+                    cyclesUsed += 8;
+                    break;
                 case 0xC5:
                     memory.WriteWord(SP, BC);
-                    SP += 2;
+                    SP -= 2;
                     cyclesUsed += 12;
+                    break;
+                case 0xD1:
+                    // POP DE
+                    DE = memory.ReadWord(SP);
+                    SP += 2;
+                    cyclesUsed += 8;
                     break;
                 case 0xD5:
                     memory.WriteWord(SP, DE);
-                    SP += 2;
+                    SP -= 2;
                     cyclesUsed += 12;
                     break;
                 case 0xE0:
                     // LDH (0xFF00 + n), A
                     memory.Write((ushort)(0xFF00 + memory.Read(++PC)), A);
+                    cyclesUsed += 8;
+                    break;
+                case 0xE1:
+                    // POP HL
+                    HL = memory.ReadWord(SP);
+                    SP += 2;
                     cyclesUsed += 8;
                     break;
                 case 0xE2:
@@ -345,7 +363,7 @@ namespace GameBoy
                     break;
                 case 0xE5:
                     memory.WriteWord(SP, HL);
-                    SP += 2;
+                    SP -= 2;
                     cyclesUsed += 12;
                     break;
                 case 0xEA:
@@ -359,6 +377,12 @@ namespace GameBoy
                     A = memory.Read((ushort)(0xFF00 + memory.Read(++PC)));
                     cyclesUsed += 8;
                     break;
+                case 0xF1:
+                    // POP AF
+                    AF = memory.ReadWord(SP);
+                    SP += 2;
+                    cyclesUsed += 8;
+                    break;
                 case 0xF2:
                     // LD A, (0xFF00 + C)
                     A = memory.Read((ushort)(0xFF00 + C));
@@ -366,7 +390,7 @@ namespace GameBoy
                     break;
                 case 0xF5:
                     memory.WriteWord(SP, AF);
-                    SP += 2;
+                    SP -= 2;
                     cyclesUsed += 12;
                     break;
                 case 0xF8:
