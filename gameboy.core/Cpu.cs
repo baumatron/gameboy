@@ -4,6 +4,7 @@ namespace GameBoy
 {
     public class Cpu
     {
+        internal int clock;
         // Registers
         internal ushort SP, PC;
 
@@ -257,22 +258,29 @@ namespace GameBoy
             byte instruction = memory.Read(this.PC);
             ushort cyclesUsed = 4;
 
-            System.Console.WriteLine($"Instruction 0x{instruction:X2}");
-
             switch (instruction)
             {
                 case 0x02:
+                    // LD (BC), A
                     memory.Write(BC, A);
                     break;
                 case 0x0A:
+                    // LD A, (BC)
                     A = memory.Read(BC);
                     cyclesUsed += 4;
                     break;
                 case 0x12:
+                    // LD (DE), A
                     memory.Write(DE, A);
                     break;
                 case 0x1A:
+                    // LD A, (DE)
                     A = memory.Read(DE);
+                    cyclesUsed += 4;
+                    break;
+                case 0xE2:
+                    // LD (0xFF00 + C), A
+                    memory.Write((ushort)(0xFF00 + C), A);
                     cyclesUsed += 4;
                     break;
                 case 0xEA:
@@ -280,6 +288,11 @@ namespace GameBoy
                     // Least significant byte first
                     memory.Write((ushort)(memory.Read(++PC) | memory.Read(++PC) << 8), A);
                     cyclesUsed += 12;
+                    break;
+                case 0xF2:
+                    // LD A, (0xFF00 + C)
+                    A = memory.Read((ushort)(0xFF00 + C));
+                    cyclesUsed += 4;
                     break;
                 case 0xFA:
                     // LD A, (nn)
@@ -352,7 +365,10 @@ namespace GameBoy
             }
 
             // Increment the program counter
-            this.PC++;
+            PC++;
+
+            // Increment the clock by the number of cycles used
+            clock += cyclesUsed;
         }
     }
 }

@@ -158,14 +158,13 @@ namespace GameBoyTests
         internal void TestLDFromRegister(GameBoy.Cpu cpu, ref byte from, ref byte to)
         {
             from = (byte)random.Next(0xFF);
-            cpu.ExecuteNextInstruction();
-            Assert.Equal(from, to);
-        }
 
-        internal void TestLDFromConstant(GameBoy.Cpu cpu, byte from, ref byte to)
-        {
+            int startingClock = cpu.clock;
+
             cpu.ExecuteNextInstruction();
+
             Assert.Equal(from, to);
+            Assert.Equal(4, cpu.clock - startingClock);
         }
 
         internal void TestLDFromHLAddress(GameBoy.Cpu cpu, ref byte to)
@@ -261,10 +260,6 @@ namespace GameBoyTests
             cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)]));
 
-            cpu.memory.Write(pc++, 0x3E);
-            cpu.memory.Write(pc++, 0xE3);
-            testTasks.Add(() => TestLDFromConstant(cpu, 0xE3, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)]));
-
             // LD (BC), A
             cpu.memory.Write(pc++, 0x02);
             testTasks.Add(() =>
@@ -341,10 +336,6 @@ namespace GameBoyTests
             cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)]));
 
-            cpu.memory.Write(pc++, 0x06);
-            cpu.memory.Write(pc++, 0x60);
-            testTasks.Add(() => TestLDFromConstant(cpu, 0x60, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)]));
-
             // LD C, reg
             baseOpCode = 0x48;
             cpu.memory.Write(pc++, baseOpCode);
@@ -370,10 +361,6 @@ namespace GameBoyTests
 
             cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)]));
-
-            cpu.memory.Write(pc++, 0x0E);
-            cpu.memory.Write(pc++, 0xE0);
-            testTasks.Add(() => TestLDFromConstant(cpu, 0xE0, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)]));
 
             // LD D, reg
             baseOpCode = 0x50;
@@ -401,10 +388,6 @@ namespace GameBoyTests
             cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)]));
 
-            cpu.memory.Write(pc++, 0x16);
-            cpu.memory.Write(pc++, 0x61);
-            testTasks.Add(() => TestLDFromConstant(cpu, 0x61, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)]));
-
             // LD E, reg
             baseOpCode = 0x58;
             cpu.memory.Write(pc++, baseOpCode);
@@ -430,10 +413,6 @@ namespace GameBoyTests
 
             cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)]));
-
-            cpu.memory.Write(pc++, 0x1E);
-            cpu.memory.Write(pc++, 0xE1);
-            testTasks.Add(() => TestLDFromConstant(cpu, 0xE1, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)]));
 
             // LD H, reg
             baseOpCode = 0x60;
@@ -461,10 +440,6 @@ namespace GameBoyTests
             cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)]));
 
-            cpu.memory.Write(pc++, 0x26);
-            cpu.memory.Write(pc++, 0x62);
-            testTasks.Add(() => TestLDFromConstant(cpu, 0x62, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)]));
-
             // LD L, reg
             baseOpCode = 0x68;
             cpu.memory.Write(pc++, baseOpCode);
@@ -490,10 +465,6 @@ namespace GameBoyTests
 
             cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)]));
-
-            cpu.memory.Write(pc++, 0x2E);
-            cpu.memory.Write(pc++, 0xE2);
-            testTasks.Add(() => TestLDFromConstant(cpu, 0xE2, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)]));
 
             // LD (HL), reg
             baseOpCode = 0x70;
@@ -534,6 +505,8 @@ namespace GameBoyTests
 
             for (int registerEncoding = 0; registerEncoding <= 7; ++registerEncoding)
             {
+                int startingClock = cpu.clock;
+
                 byte instruction = (byte)(registerEncoding << 3 | 0b110);
                 cpu.memory.Write(pc++, instruction);
                 cpu.memory.Write(pc++, immediateValue);
@@ -545,6 +518,12 @@ namespace GameBoyTests
                 {
                     // LD (HL), n
                     cpu.HL = testLoadAddress;
+
+                    Assert.NotEqual(immediateValue, cpu.memory.Read(testLoadAddress));
+                }
+                else
+                {
+                    Assert.NotEqual(immediateValue, cpu.registers[Cpu.RegisterEncodingToIndex(encoding)]);
                 }
 
                 cpu.ExecuteNextInstruction();
@@ -554,13 +533,144 @@ namespace GameBoyTests
                 {
                     // LD (HL), n
                     Assert.Equal(immediateValue, cpu.memory.Read(testLoadAddress));
+                    Assert.Equal(12, cpu.clock - startingClock);
                 }
                 else
                 {
                     // LD register, n
                     Assert.Equal(immediateValue, cpu.registers[Cpu.RegisterEncodingToIndex(encoding)]);
+                    Assert.Equal(8, cpu.clock - startingClock);
                 }
+
+                Assert.Equal(pc, cpu.PC);
             }
+        }
+
+        [Fact]
+        public void TestLDFromBCtoA()
+        {
+            var cpu = new GameBoy.Cpu();
+            cpu.Init();
+
+            int startingClock = cpu.clock;
+            const int expectedCycles = 8;
+
+            // Set up some test data for address loads
+            ushort pc = 0x100;
+            const ushort testLoadAddress = 0x0001;
+            const byte testValue = 0x1A;
+
+            // Prep memory with LD A, (BC) instruction
+            cpu.memory.Write(pc++, 0x0A);
+
+            // Prep memory with value
+            cpu.memory.Write(testLoadAddress, testValue);
+
+            // Prep BC register
+            cpu.BC = testLoadAddress;
+
+            // Execute the instruction
+            cpu.ExecuteNextInstruction();
+
+            // Value from memory should be stored in A
+            Assert.Equal(testValue, cpu.A);
+
+            Assert.Equal(expectedCycles, cpu.clock - startingClock);
+
+            Assert.Equal(pc, cpu.PC);
+        }
+
+        [Fact]
+        public void TestLDFromDEtoA()
+        {
+            var cpu = new GameBoy.Cpu();
+            cpu.Init();
+
+            int startingClock = cpu.clock;
+            const int expectedCycles = 8;
+
+            // Set up some test data for address loads
+            ushort pc = 0x100;
+            const ushort testLoadAddress = 0x0001;
+            const byte testValue = 0x1A;
+
+            // Prep memory with LD A, (DE) instruction
+            cpu.memory.Write(pc++, 0x1A);
+
+            // Prep memory with value
+            cpu.memory.Write(testLoadAddress, testValue);
+
+            // Prep DE register
+            cpu.DE = testLoadAddress;
+
+            Assert.NotEqual(testValue, cpu.A);
+            byte oldF = cpu.F;
+
+            // Execute the instruction
+            cpu.ExecuteNextInstruction();
+
+            // Value from memory should be stored in A
+            Assert.Equal(testValue, cpu.A);
+
+            Assert.Equal(oldF, cpu.F);
+
+            Assert.Equal(expectedCycles, cpu.clock - startingClock);
+
+            Assert.Equal(pc, cpu.PC);
+        }
+
+        [Fact]
+        public void TestLDFromCOffsetToA()
+        {
+            var cpu = new Cpu();
+            cpu.Init();
+
+            int startingClock = cpu.clock;
+            const int expectedCycles = 8;
+
+            ushort pc = 0x100;
+            const byte addressOffset = 0x12;
+            const ushort testLoadAddress = 0xFF00 + addressOffset;
+            const byte testValue = 0x65;
+
+            cpu.memory.Write(pc++, 0xF2);
+            cpu.memory.Write(testLoadAddress, testValue);
+            cpu.C = addressOffset;
+
+            Assert.NotEqual(testValue, cpu.A);
+
+            cpu.ExecuteNextInstruction();
+
+            Assert.Equal(testValue, cpu.A);
+            Assert.Equal(pc, cpu.PC);
+            Assert.Equal(expectedCycles, cpu.clock - startingClock);
+        }
+
+        [Fact]
+        public void TestLDToCOffsetFromA()
+        {
+            var cpu = new Cpu();
+            cpu.Init();
+
+            int startingClock = cpu.clock;
+            const int cyclesUsed = 8;
+
+            ushort pc = 0x100;
+            const byte addressOffset = 0x12;
+            const ushort testLoadAddress = 0xFF00 + addressOffset;
+            const byte testValue = 0x65;
+
+            cpu.memory.Write(pc++, 0xE2);
+            cpu.C = addressOffset;
+            cpu.A = testValue;
+
+            Assert.NotEqual(testValue, cpu.memory.Read(testLoadAddress));
+
+            cpu.ExecuteNextInstruction();
+
+            Assert.Equal(testValue, cpu.memory.Read(testLoadAddress));
+            Assert.Equal(pc, cpu.PC);
+            Assert.Equal(cyclesUsed, cpu.clock - startingClock);
         }
     }
 }
