@@ -744,7 +744,7 @@ namespace GameBoyTests
         }
 
         [Fact]
-        public void TestLoadFromAToImmediateByte()
+        public void TestLoadFromAToImmediateAddressByte()
         {
             var cpu = new Cpu();
             cpu.Init();
@@ -753,7 +753,7 @@ namespace GameBoyTests
 
             ushort pc = 0x100;
             const byte offset = 0x35;
-            const ushort testLoadAddress = 0xF000 + offset;
+            const ushort testLoadAddress = 0xFF00 + offset;
             const byte testValue = 0x65;
 
             cpu.memory.Write(pc++, 0xE0);
@@ -770,7 +770,7 @@ namespace GameBoyTests
         }
 
         [Fact]
-        public void TestLoadFromImmediateByteToA()
+        public void TestLoadFromImmediateAddressByteToA()
         {
             var cpu = new Cpu();
             cpu.Init();
@@ -779,7 +779,7 @@ namespace GameBoyTests
 
             ushort pc = 0x100;
             const byte offset = 0x35;
-            const ushort testLoadAddress = 0xF000 + offset;
+            const ushort testLoadAddress = 0xFF00 + offset;
             const byte testValue = 0x65;
 
             cpu.memory.Write(pc++, 0xF0);

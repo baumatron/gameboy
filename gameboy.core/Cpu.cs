@@ -298,6 +298,11 @@ namespace GameBoy
                     A = memory.Read(HL--);
                     cyclesUsed += 4;
                     break;
+                case 0xE0:
+                    // LDH (0xFF00 + n), A
+                    memory.Write((ushort)(0xFF00 + memory.Read(++PC)), A);
+                    cyclesUsed += 8;
+                    break;
                 case 0xE2:
                     // LD (0xFF00 + C), A
                     memory.Write((ushort)(0xFF00 + C), A);
@@ -313,6 +318,11 @@ namespace GameBoy
                     // LD A, (0xFF00 + C)
                     A = memory.Read((ushort)(0xFF00 + C));
                     cyclesUsed += 4;
+                    break;
+                case 0xF0:
+                    // LDH A, (0xFF00 + n)
+                    A = memory.Read((ushort)(0xFF00 + memory.Read(++PC)));
+                    cyclesUsed += 8;
                     break;
                 case 0xFA:
                     // LD A, (nn)
