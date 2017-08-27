@@ -840,5 +840,26 @@ namespace GameBoyTests
             var runner = new InstructionTestRunner(new LoadImmediateWordToRegistersTest(0x01, x => x.BC));
             runner.Run();
         }
+
+        [Fact]
+        public void TestLoadImmediateWordToDE()
+        {
+            var runner = new InstructionTestRunner(new LoadImmediateWordToRegistersTest(0x11, x => x.DE));
+            runner.Run();
+        }
+
+        [Fact]
+        public void TestLoadImmediateWordToHL()
+        {
+            var runner = new InstructionTestRunner(new LoadImmediateWordToRegistersTest(0x21, x => x.HL));
+            runner.Run();
+        }
+
+        [Fact]
+        public void TestLoadImmediateWordToSP()
+        {
+            var runner = new InstructionTestRunner(new LoadImmediateWordToRegistersTest(0x31, x => x.SP));
+            runner.Run();
+        }
     }
 }
