@@ -344,6 +344,11 @@ namespace GameBoy
                     A = memory.Read((ushort)(0xFF00 + memory.Read(++PC)));
                     cyclesUsed += 8;
                     break;
+                case 0xF9:
+                    // LD SP, HL
+                    SP = HL;
+                    cyclesUsed += 4;
+                    break;
                 case 0xFA:
                     // LD A, (nn)
                     // Least significant byte first

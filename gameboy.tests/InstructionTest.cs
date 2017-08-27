@@ -5,8 +5,9 @@ namespace GameBoyTests
 {
     class InstructionTest
     {
-        public InstructionTest()
+        public InstructionTest(byte instruction)
         {
+            _instruction = instruction;
             _cpu = new Cpu();
             _cpu.Init();
 
@@ -17,7 +18,7 @@ namespace GameBoyTests
 
         public virtual void PrepareTest()
         {
-
+            _cpu.memory.Write(_testPc++, _instruction);
         }
 
         public virtual void ExecuteTestSubject()
@@ -27,7 +28,6 @@ namespace GameBoyTests
 
         public virtual void ValidatePreExecute()
         {
-            Assert.Equal(ExpectedClockCycles, _cpu.clock - _startingClock);
         }
 
         public virtual void ValidatePostExecute()
@@ -36,9 +36,15 @@ namespace GameBoyTests
             Assert.Equal(_testPc, _cpu.PC);
         }
 
+        protected readonly byte _instruction;
+
+        protected readonly ushort _testWord = 0x6523;
+
+        protected readonly byte _testByte = 0x73;
+
         public virtual int ExpectedClockCycles => 4;
 
-        protected int _startingClock;
+        protected readonly int _startingClock;
 
         protected ushort _testPc;
 

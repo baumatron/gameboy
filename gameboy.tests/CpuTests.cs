@@ -798,9 +798,8 @@ namespace GameBoyTests
         class LoadImmediateWordToRegistersTest : InstructionTest
         {
             public LoadImmediateWordToRegistersTest(byte instruction, Func<Cpu, ushort> GetRegisterValue)
-                : base()
+                : base(instruction)
             {
-                _instruction = instruction;
                 _GetRegisterValue = GetRegisterValue;
             }
 
@@ -808,26 +807,23 @@ namespace GameBoyTests
             {
                 base.PrepareTest();
 
-                _cpu.memory.Write(_testPc++, _instruction);
-                _cpu.memory.Write(_testPc++, _testValue & 0xFF);
-                _cpu.memory.Write(_testPc++, _testValue >> 8);
+                _cpu.memory.Write(_testPc++, (byte)(_testWord & 0xFF));
+                _cpu.memory.Write(_testPc++, (byte)(_testWord >> 8));
             }
 
             public override void ValidatePreExecute()
             {
-                Assert.NotEqual(_testValue, _GetRegisterValue(_cpu));
+                base.ValidatePreExecute();
+
+                Assert.NotEqual(_testWord, _GetRegisterValue(_cpu));
             }
 
             public override void ValidatePostExecute()
             {
                 base.ValidatePostExecute();
 
-                Assert.Equal(_testValue, _GetRegisterValue(_cpu));
+                Assert.Equal(_testWord, _GetRegisterValue(_cpu));
             }
-
-            const ushort _testValue = 0x6532;
-
-            readonly byte _instruction;
 
             readonly Func<Cpu, ushort> _GetRegisterValue;
 
@@ -859,6 +855,40 @@ namespace GameBoyTests
         public void TestLoadImmediateWordToSP()
         {
             var runner = new InstructionTestRunner(new LoadImmediateWordToRegistersTest(0x31, x => x.SP));
+            runner.Run();
+        }
+
+        class LoadFromHLToSPTest : InstructionTest
+        {
+            public LoadFromHLToSPTest()
+                : base(0xF9)
+                {}
+
+            public override void PrepareTest()
+            {
+                base.PrepareTest();
+                _cpu.HL = _testWord;
+            }
+
+            public override void ValidatePreExecute()
+            {
+                base.ValidatePreExecute();
+                Assert.NotEqual(_cpu.HL, _cpu.SP);
+            }
+
+            public override void ValidatePostExecute()
+            {
+                base.ValidatePostExecute();
+                Assert.Equal(_cpu.HL, _cpu.SP);
+            }
+
+            public override int ExpectedClockCycles => 8;
+        };
+
+        [Fact]
+        public void TestLoadFromHLToSP()
+        {
+            var runner = new InstructionTestRunner(new LoadFromHLToSPTest());
             runner.Run();
         }
     }
