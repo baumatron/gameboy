@@ -334,6 +334,11 @@ namespace GameBoy
                     SP -= 2;
                     cyclesUsed += 12;
                     break;
+                case 0xC6:
+                    // ADD A, n
+                    A = Add(A, memory.Read(++PC), useCarry: false);
+                    cyclesUsed += 4;
+                    break;
                 case 0xD1:
                     // POP DE
                     DE = memory.ReadWord(SP);
@@ -399,8 +404,7 @@ namespace GameBoy
                     int rhs = (sbyte)memory.Read(++PC);
                     HL = (ushort)(lhs + rhs);
                     F = 0; // Clear flags
-                    flagH = GetHalfCarryFlagsForAdd(lhs, rhs);
-                    flagC = GetCarryFlagsForAdd(lhs, rhs);
+                    SetCarryFlagsForAdd(lhs, rhs);
                     cyclesUsed += 8;
                     break;
                 case 0xF9:
@@ -471,7 +475,22 @@ namespace GameBoy
                                 }
                             }
                             break;
+                        case 0x2: // ADD, ADC
+                            {
+                                bool useCarry = (instruction & 0x8) > 0;
+                                var source = (RegisterEncoding)((instruction) & 0x7);
 
+                                if (RegisterEncoding.HLderef == source)
+                                {
+                                    A = Add(A, memory.Read(HL), useCarry);
+                                    cyclesUsed += 4;
+                                }
+                                else
+                                {
+                                    A = Add(A, registers[RegisterEncodingToIndex(source)], useCarry);
+                                }
+                            }
+                            break;
                         default:
                             throw new Exception($"Instruction not implemented: 0x{instruction:X2}");
                     }
@@ -485,14 +504,21 @@ namespace GameBoy
             clock += cyclesUsed;
         }
 
-        bool GetHalfCarryFlagsForAdd(int lhs, int rhs)
+        void SetCarryFlagsForAdd(int lhs, int rhs, bool useCarry = false)
         {
-            return (((lhs & 0x0F) + (rhs & 0x0F)) & 0xF0) > 0;
+            int carry = useCarry && flagC ? 1 : 0;
+            flagH = ((lhs & 0xF) + (rhs & 0xF) + carry) > 0xF;
+            flagC = ((lhs & 0xFF) + (rhs & 0xFF) + carry) > 0xFF;
         }
 
-        bool GetCarryFlagsForAdd(int lhs, int rhs)
+        byte Add(byte lhs, byte rhs, bool useCarry)
         {
-            return (((lhs & 0x00FF) + (rhs & 0x00FF)) & 0xFF00) > 0;
+            int carry = useCarry && flagC ? 1 : 0;
+            byte result = (byte)(lhs + rhs + carry);
+            F = 0; // Clear flags
+            flagZ = result == 0;
+            SetCarryFlagsForAdd(lhs, rhs, useCarry);
+            return result;
         }
     }
 }

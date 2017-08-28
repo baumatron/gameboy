@@ -1167,5 +1167,130 @@ namespace GameBoyTests
         {
             TestPopRegisterWord(0xE1, cpu => cpu.HL);
         }
+
+        public void TestAdd(byte instruction, byte lhs, byte rhs, Action<Cpu, byte> SetRegister, bool halfCarry, bool fullCarry, int cycles = 4, byte? immediate = null)
+        {
+            var test = new InstructionTest(instruction)
+                .WithClockCycles(cycles)
+                .WithTestPreparation(cpu =>
+                {
+                    cpu.A = lhs;
+                    cpu.F = 0;
+                    cpu.flagN = true;
+                    SetRegister(cpu, rhs);
+                })
+                .WithPreValidation(cpu =>
+                {
+                    Assert.NotEqual(cpu.A, (byte)(lhs + rhs));
+                })
+                .WithPostValidation(cpu =>
+                {
+                    Assert.Equal(cpu.A, (byte)(lhs + rhs));
+                    Assert.Equal(cpu.flagZ, cpu.A == 0);
+                    Assert.Equal(cpu.flagN, false);
+                    Assert.Equal(cpu.flagH, halfCarry);
+                    Assert.Equal(cpu.flagC, fullCarry);
+                });
+
+            if (null != immediate)
+            {
+                test.WithImmediateByte(immediate.Value);
+            }
+
+            var runner = new InstructionTestRunner(test);
+            runner.Run();
+        }
+
+        [Fact]
+        public void TestAddB()
+        {
+            byte instruction = 0x80;
+            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.B = value;
+            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false);
+            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false);
+            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true);
+            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true);
+        }
+
+        [Fact]
+        public void TestAddC()
+        {
+            byte instruction = 0x81;
+            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.C = value;
+            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false);
+            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false);
+            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true);
+            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true);
+        }
+
+        [Fact]
+        public void TestAddD()
+        {
+            byte instruction = 0x82;
+            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.D = value;
+            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false);
+            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false);
+            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true);
+            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true);
+        }
+
+        [Fact]
+        public void TestAddE()
+        {
+            byte instruction = 0x83;
+            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.E = value;
+            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false);
+            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false);
+            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true);
+            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true);
+        }
+
+        [Fact]
+        public void TestAddH()
+        {
+            byte instruction = 0x84;
+            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.H = value;
+            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false);
+            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false);
+            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true);
+            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true);
+        }
+
+        [Fact]
+        public void TestAddL()
+        {
+            byte instruction = 0x85;
+            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.L = value;
+            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false);
+            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false);
+            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true);
+            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true);
+        }
+
+        [Fact]
+        public void TestAddHLAddress()
+        {
+            byte instruction = 0x86;
+            Action<Cpu, byte> SetRegister = (cpu, value) =>
+            {
+                cpu.HL = 0x1234;
+                cpu.memory.Write(cpu.HL, value);
+            };
+            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false, cycles: 8);
+            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false, cycles: 8);
+            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true, cycles: 8);
+            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true, cycles: 8);
+        }
+
+        [Fact]
+        public void TestAddImmediate()
+        {
+            byte instruction = 0xC6;
+            Action<Cpu, byte> SetRegister = (cpu, value) => {};
+            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false, cycles: 8, immediate: 0x05);
+            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false, cycles: 8, immediate: 0x01);
+            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true, cycles: 8, immediate: 0x10);
+            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true, cycles: 8, immediate: 0x01);
+        }
     }
 }
