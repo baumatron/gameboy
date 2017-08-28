@@ -335,8 +335,10 @@ namespace GameBoy
                     cyclesUsed += 12;
                     break;
                 case 0xC6:
+                case 0xCE:
                     // ADD A, n
-                    A = Add(A, memory.Read(++PC), useCarry: false);
+                    // ADC A, n
+                    A = Add(A, memory.Read(++PC), useCarry: (instruction & 0x80) > 0);
                     cyclesUsed += 4;
                     break;
                 case 0xD1:
@@ -403,8 +405,9 @@ namespace GameBoy
                     int lhs = SP;
                     int rhs = (sbyte)memory.Read(++PC);
                     HL = (ushort)(lhs + rhs);
-                    F = 0; // Clear flags
                     SetCarryFlagsForAdd(lhs, rhs);
+                    flagZ = false;
+                    flagN = false;
                     cyclesUsed += 8;
                     break;
                 case 0xF9:
@@ -435,7 +438,6 @@ namespace GameBoy
                                     {
                                         memory.Write(HL, value);
                                         cyclesUsed += 4;
-                                        // TODO: Validate that this is the cost of this instruction.
                                     }
                                     else
                                     {
@@ -515,9 +517,9 @@ namespace GameBoy
         {
             int carry = useCarry && flagC ? 1 : 0;
             byte result = (byte)(lhs + rhs + carry);
-            F = 0; // Clear flags
-            flagZ = result == 0;
             SetCarryFlagsForAdd(lhs, rhs, useCarry);
+            flagN = false;
+            flagZ = result == 0;
             return result;
         }
     }

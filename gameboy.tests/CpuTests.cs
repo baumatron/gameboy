@@ -1168,8 +1168,9 @@ namespace GameBoyTests
             TestPopRegisterWord(0xE1, cpu => cpu.HL);
         }
 
-        public void TestAdd(byte instruction, byte lhs, byte rhs, Action<Cpu, byte> SetRegister, bool halfCarry, bool fullCarry, int cycles = 4, byte? immediate = null)
+        public void TestAdd(byte instruction, byte lhs, byte rhs, Action<Cpu, byte> SetRegister, bool setFlagC, bool halfCarry, bool fullCarry, int cycles = 4, bool rhsIsImmediate = false)
         {
+            byte result = (byte)(rhs + lhs + ((setFlagC && ((instruction & 0x80) > 0)) ? 1 : 0));
             var test = new InstructionTest(instruction)
                 .WithClockCycles(cycles)
                 .WithTestPreparation(cpu =>
@@ -1177,24 +1178,28 @@ namespace GameBoyTests
                     cpu.A = lhs;
                     cpu.F = 0;
                     cpu.flagN = true;
-                    SetRegister(cpu, rhs);
+                    cpu.flagC = setFlagC;
+                    if (!rhsIsImmediate)
+                    {
+                        SetRegister(cpu, rhs);
+                    }
                 })
                 .WithPreValidation(cpu =>
                 {
-                    Assert.NotEqual(cpu.A, (byte)(lhs + rhs));
+                    Assert.NotEqual(result, cpu.A);
                 })
                 .WithPostValidation(cpu =>
                 {
-                    Assert.Equal(cpu.A, (byte)(lhs + rhs));
-                    Assert.Equal(cpu.flagZ, cpu.A == 0);
-                    Assert.Equal(cpu.flagN, false);
-                    Assert.Equal(cpu.flagH, halfCarry);
-                    Assert.Equal(cpu.flagC, fullCarry);
+                    Assert.Equal(result, cpu.A);
+                    Assert.Equal(cpu.A == 0, cpu.flagZ);
+                    Assert.Equal(false, cpu.flagN);
+                    Assert.Equal(halfCarry, cpu.flagH);
+                    Assert.Equal(fullCarry, cpu.flagC);
                 });
 
-            if (null != immediate)
+            if (rhsIsImmediate)
             {
-                test.WithImmediateByte(immediate.Value);
+                test.WithImmediateByte(rhs);
             }
 
             var runner = new InstructionTestRunner(test);
@@ -1202,69 +1207,46 @@ namespace GameBoyTests
         }
 
         [Fact]
-        public void TestAddB()
+        public void TestAddAllRegisters()
         {
-            byte instruction = 0x80;
-            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.B = value;
-            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false);
-            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false);
-            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true);
-            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true);
+            // Test rhs of B-D. Skip A and (HL)
+            for (byte i = 0; i < 6; ++i)
+            {
+                Cpu.RegisterEncoding register = (Cpu.RegisterEncoding)(i & 0b111);
+                if (register != Cpu.RegisterEncoding.HLderef)
+                {
+                    byte instruction = (byte)(0x80 | i);
+                    Action<Cpu, byte> SetRegister = (cpu, value) => cpu.registers[Cpu.RegisterEncodingToIndex(register)] = value;
+                    TestAdd(instruction, 0x40, 0x05, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false);
+                    TestAdd(instruction, 0x4F, 0x01, SetRegister, setFlagC: false, halfCarry: true, fullCarry: false);
+                    TestAdd(instruction, 0xF0, 0x10, SetRegister, setFlagC: false, halfCarry: false, fullCarry: true);
+                    TestAdd(instruction, 0xFF, 0x01, SetRegister, setFlagC: false, halfCarry: true, fullCarry: true);
+                }
+            }
         }
 
         [Fact]
-        public void TestAddC()
+        public void TestAdcAllRegisters()
         {
-            byte instruction = 0x81;
-            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.C = value;
-            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false);
-            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false);
-            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true);
-            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true);
-        }
+            // Test rhs of B-D. Skip A and (HL)
+            for (byte i = 0; i < 6; ++i)
+            {
+                Cpu.RegisterEncoding register = (Cpu.RegisterEncoding)(i & 0b111);
+                if (register != Cpu.RegisterEncoding.HLderef)
+                {
+                    byte instruction = (byte)(0x88 | i);
+                    Action<Cpu, byte> SetRegister = (cpu, value) => cpu.registers[Cpu.RegisterEncodingToIndex(register)] = value;
+                    TestAdd(instruction, 0x40, 0x05, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false);
+                    TestAdd(instruction, 0x4F, 0x01, SetRegister, setFlagC: false, halfCarry: true, fullCarry: false);
+                    TestAdd(instruction, 0xF0, 0x10, SetRegister, setFlagC: false, halfCarry: false, fullCarry: true);
+                    TestAdd(instruction, 0xFF, 0x01, SetRegister, setFlagC: false, halfCarry: true, fullCarry: true);
 
-        [Fact]
-        public void TestAddD()
-        {
-            byte instruction = 0x82;
-            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.D = value;
-            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false);
-            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false);
-            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true);
-            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true);
-        }
-
-        [Fact]
-        public void TestAddE()
-        {
-            byte instruction = 0x83;
-            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.E = value;
-            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false);
-            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false);
-            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true);
-            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true);
-        }
-
-        [Fact]
-        public void TestAddH()
-        {
-            byte instruction = 0x84;
-            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.H = value;
-            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false);
-            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false);
-            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true);
-            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true);
-        }
-
-        [Fact]
-        public void TestAddL()
-        {
-            byte instruction = 0x85;
-            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.L = value;
-            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false);
-            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false);
-            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true);
-            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true);
+                    TestAdd(instruction, 0xF0, 0x0E, SetRegister, setFlagC: true, halfCarry: false, fullCarry: false);
+                    TestAdd(instruction, 0x4F, 0x00, SetRegister, setFlagC: true, halfCarry: true, fullCarry: false);
+                    TestAdd(instruction, 0xF0, 0x10, SetRegister, setFlagC: true, halfCarry: false, fullCarry: true);
+                    TestAdd(instruction, 0xFF, 0x00, SetRegister, setFlagC: true, halfCarry: true, fullCarry: true);
+                }
+            }
         }
 
         [Fact]
@@ -1276,21 +1258,87 @@ namespace GameBoyTests
                 cpu.HL = 0x1234;
                 cpu.memory.Write(cpu.HL, value);
             };
-            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false, cycles: 8);
-            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false, cycles: 8);
-            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true, cycles: 8);
-            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true, cycles: 8);
+            TestAdd(instruction, 0x40, 0x05, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false, cycles: 8);
+            TestAdd(instruction, 0x4F, 0x01, SetRegister, setFlagC: false, halfCarry: true, fullCarry: false, cycles: 8);
+            TestAdd(instruction, 0xF0, 0x10, SetRegister, setFlagC: false, halfCarry: false, fullCarry: true, cycles: 8);
+            TestAdd(instruction, 0xFF, 0x01, SetRegister, setFlagC: false, halfCarry: true, fullCarry: true, cycles: 8);
+        }
+
+        [Fact]
+        public void TestAdcHLAddress()
+        {
+            byte instruction = 0x8E;
+            Action<Cpu, byte> SetRegister = (cpu, value) =>
+            {
+                cpu.HL = 0x1234;
+                cpu.memory.Write(cpu.HL, value);
+            };
+            TestAdd(instruction, 0x40, 0x05, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false, cycles: 8);
+            TestAdd(instruction, 0x4F, 0x01, SetRegister, setFlagC: false, halfCarry: true, fullCarry: false, cycles: 8);
+            TestAdd(instruction, 0xF0, 0x10, SetRegister, setFlagC: false, halfCarry: false, fullCarry: true, cycles: 8);
+            TestAdd(instruction, 0xFF, 0x01, SetRegister, setFlagC: false, halfCarry: true, fullCarry: true, cycles: 8);
+
+            TestAdd(instruction, 0xF0, 0x0E, SetRegister, setFlagC: true, halfCarry: false, fullCarry: false, cycles: 8);
+            TestAdd(instruction, 0x4F, 0x00, SetRegister, setFlagC: true, halfCarry: true, fullCarry: false, cycles: 8);
+            TestAdd(instruction, 0xF0, 0x10, SetRegister, setFlagC: true, halfCarry: false, fullCarry: true, cycles: 8);
+            TestAdd(instruction, 0xFF, 0x00, SetRegister, setFlagC: true, halfCarry: true, fullCarry: true, cycles: 8);
         }
 
         [Fact]
         public void TestAddImmediate()
         {
             byte instruction = 0xC6;
-            Action<Cpu, byte> SetRegister = (cpu, value) => {};
-            TestAdd(instruction, 0x40, 0x05, SetRegister, halfCarry: false, fullCarry: false, cycles: 8, immediate: 0x05);
-            TestAdd(instruction, 0x4F, 0x01, SetRegister, halfCarry: true, fullCarry: false, cycles: 8, immediate: 0x01);
-            TestAdd(instruction, 0xF0, 0x10, SetRegister, halfCarry: false, fullCarry: true, cycles: 8, immediate: 0x10);
-            TestAdd(instruction, 0xFF, 0x01, SetRegister, halfCarry: true, fullCarry: true, cycles: 8, immediate: 0x01);
+            TestAdd(instruction, 0x40, 0x05, null, setFlagC: false, halfCarry: false, fullCarry: false, cycles: 8, rhsIsImmediate: true);
+            TestAdd(instruction, 0x4F, 0x01, null, setFlagC: false, halfCarry: true, fullCarry: false, cycles: 8, rhsIsImmediate: true);
+            TestAdd(instruction, 0xF0, 0x10, null, setFlagC: false, halfCarry: false, fullCarry: true, cycles: 8, rhsIsImmediate: true);
+            TestAdd(instruction, 0xFF, 0x01, null, setFlagC: false, halfCarry: true, fullCarry: true, cycles: 8, rhsIsImmediate: true);
+        }
+
+        [Fact]
+        public void TestAdcImmediate()
+        {
+            byte instruction = 0xCE;
+            TestAdd(instruction, 0x40, 0x05, null, setFlagC: false, halfCarry: false, fullCarry: false, cycles: 8, rhsIsImmediate: true);
+            TestAdd(instruction, 0x4F, 0x01, null, setFlagC: false, halfCarry: true, fullCarry: false, cycles: 8, rhsIsImmediate: true);
+            TestAdd(instruction, 0xF0, 0x10, null, setFlagC: false, halfCarry: false, fullCarry: true, cycles: 8, rhsIsImmediate: true);
+            TestAdd(instruction, 0xFF, 0x01, null, setFlagC: false, halfCarry: true, fullCarry: true, cycles: 8, rhsIsImmediate: true);
+
+            TestAdd(instruction, 0xF0, 0x0E, null, setFlagC: true, halfCarry: false, fullCarry: false, cycles: 8, rhsIsImmediate: true);
+            TestAdd(instruction, 0x4F, 0x00, null, setFlagC: true, halfCarry: true, fullCarry: false, cycles: 8, rhsIsImmediate: true);
+            TestAdd(instruction, 0xF0, 0x10, null, setFlagC: true, halfCarry: false, fullCarry: true, cycles: 8, rhsIsImmediate: true);
+            TestAdd(instruction, 0xFF, 0x00, null, setFlagC: true, halfCarry: true, fullCarry: true, cycles: 8, rhsIsImmediate: true);
+        }
+
+        [Fact]
+        public void TestAddA()
+        {
+            byte instruction = 0x80 | (byte)Cpu.RegisterEncoding.A;
+            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.A = value;
+            TestAdd(instruction, 0x40, 0x40, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false);
+            TestAdd(instruction, 0x08, 0x08, SetRegister, setFlagC: false, halfCarry: true, fullCarry: false);
+            TestAdd(instruction, 0x80, 0x80, SetRegister, setFlagC: false, halfCarry: false, fullCarry: true);
+            TestAdd(instruction, 0x88, 0x88, SetRegister, setFlagC: false, halfCarry: true, fullCarry: true);
+        }
+
+        [Fact]
+        public void TestAdcA()
+        {
+            byte instruction = 0x88 | (byte)Cpu.RegisterEncoding.A;
+            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.A = value;
+            TestAdd(instruction, 0x40, 0x40, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false);
+            TestAdd(instruction, 0x08, 0x08, SetRegister, setFlagC: false, halfCarry: true, fullCarry: false);
+            TestAdd(instruction, 0x80, 0x80, SetRegister, setFlagC: false, halfCarry: false, fullCarry: true);
+            TestAdd(instruction, 0x88, 0x88, SetRegister, setFlagC: false, halfCarry: true, fullCarry: true);
+
+            TestAdd(instruction, 0x40, 0x40, SetRegister, setFlagC: true, halfCarry: false, fullCarry: false);
+            TestAdd(instruction, 0x08, 0x08, SetRegister, setFlagC: true, halfCarry: true, fullCarry: false);
+            TestAdd(instruction, 0x80, 0x80, SetRegister, setFlagC: true, halfCarry: false, fullCarry: true);
+            TestAdd(instruction, 0x88, 0x88, SetRegister, setFlagC: true, halfCarry: true, fullCarry: true);
+
+            TestAdd(instruction, 0x40, 0x40, SetRegister, setFlagC: true, halfCarry: false, fullCarry: false);
+            TestAdd(instruction, 0x07, 0x07, SetRegister, setFlagC: true, halfCarry: false, fullCarry: false);
+            TestAdd(instruction, 0x70, 0x70, SetRegister, setFlagC: true, halfCarry: false, fullCarry: false);
+            TestAdd(instruction, 0x77, 0x77, SetRegister, setFlagC: true, halfCarry: false, fullCarry: false);
         }
     }
 }
