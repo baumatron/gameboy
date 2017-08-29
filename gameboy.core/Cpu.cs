@@ -263,17 +263,15 @@ namespace GameBoy
             {
                 case 0x01:
                     // LD BC, nn
-                    BC = (ushort)(memory.Read(++PC) | (memory.Read(++PC) << 8));
-                    cyclesUsed += 8;
+                    BC = GetImmediateOperandWord(ref cyclesUsed);
                     break;
                 case 0x02:
                     // LD (BC), A
                     memory.Write(BC, A);
                     break;
                 case 0x08:
-                    memory.WriteWord(memory.ReadWord(++PC), SP);
-                    PC++;
-                    cyclesUsed += 16;
+                    memory.WriteWord(GetImmediateOperandWord(ref cyclesUsed), SP);
+                    cyclesUsed += 8;
                     break;
                 case 0x0A:
                     // LD A, (BC)
@@ -282,8 +280,7 @@ namespace GameBoy
                     break;
                 case 0x11:
                     // LD DE, nn
-                    DE = (ushort)(memory.Read(++PC) | (memory.Read(++PC) << 8));
-                    cyclesUsed += 8;
+                    DE = GetImmediateOperandWord(ref cyclesUsed);
                     break;
                 case 0x12:
                     // LD (DE), A
@@ -296,8 +293,7 @@ namespace GameBoy
                     break;
                 case 0x21:
                     // LD HL, nn
-                    HL = (ushort)(memory.Read(++PC) | (memory.Read(++PC) << 8));
-                    cyclesUsed += 8;
+                    HL = GetImmediateOperandWord(ref cyclesUsed);
                     break;
                 case 0x22:
                     // LDI (HL), A
@@ -311,8 +307,7 @@ namespace GameBoy
                     break;
                 case 0x31:
                     // LD SP, nn
-                    SP = (ushort)(memory.Read(++PC) | (memory.Read(++PC) << 8));
-                    cyclesUsed += 8;
+                    SP = GetImmediateOperandWord(ref cyclesUsed);
                     break;
                 case 0x32:
                     // LDD (HL), A
@@ -339,8 +334,7 @@ namespace GameBoy
                 case 0xCE:
                     // ADD A, n
                     // ADC A, n
-                    A = Add(A, memory.Read(++PC), useCarry: (instruction & 0x80) > 0);
-                    cyclesUsed += 4;
+                    A = Add(A, GetImmediateOperand(ref cyclesUsed), useCarry: (instruction & 0x80) > 0);
                     break;
                 case 0xD1:
                     // POP DE
@@ -357,13 +351,12 @@ namespace GameBoy
                 case 0xDE:
                     // SUB A, n
                     // SBC A, n
-                    A = Sub(A, memory.Read(++PC), useCarry: (instruction & 0x80) > 0);
-                    cyclesUsed += 4;
+                    A = Sub(A, GetImmediateOperand(ref cyclesUsed), useCarry: (instruction & 0x80) > 0);
                     break;
                 case 0xE0:
                     // LDH (0xFF00 + n), A
-                    memory.Write((ushort)(0xFF00 + memory.Read(++PC)), A);
-                    cyclesUsed += 8;
+                    memory.Write((ushort)(0xFF00 + GetImmediateOperand(ref cyclesUsed)), A);
+                    cyclesUsed += 4;
                     break;
                 case 0xE1:
                     // POP HL
@@ -384,13 +377,13 @@ namespace GameBoy
                 case 0xEA:
                     // LD (nn), A
                     // Least significant byte first
-                    memory.Write((ushort)(memory.Read(++PC) | memory.Read(++PC) << 8), A);
-                    cyclesUsed += 12;
+                    memory.Write(GetImmediateOperandWord(ref cyclesUsed), A);
+                    cyclesUsed += 4;
                     break;
                 case 0xF0:
                     // LDH A, (0xFF00 + n)
-                    A = memory.Read((ushort)(0xFF00 + memory.Read(++PC)));
-                    cyclesUsed += 8;
+                    A = memory.Read((ushort)(0xFF00 + GetImmediateOperand(ref cyclesUsed)));
+                    cyclesUsed += 4;
                     break;
                 case 0xF1:
                     // POP AF
@@ -411,12 +404,12 @@ namespace GameBoy
                 case 0xF8:
                     // LD HL, SP+n
                     int lhs = SP;
-                    int rhs = (sbyte)memory.Read(++PC);
+                    int rhs = (sbyte)GetImmediateOperand(ref cyclesUsed);
                     HL = (ushort)(lhs + rhs);
                     SetCarryFlagsForAdd(lhs, rhs);
                     flagZ = false;
                     flagN = false;
-                    cyclesUsed += 8;
+                    cyclesUsed += 4;
                     break;
                 case 0xF9:
                     // LD SP, HL
@@ -426,12 +419,11 @@ namespace GameBoy
                 case 0xFA:
                     // LD A, (nn)
                     // Least significant byte first
-                    A = memory.Read((ushort)(memory.Read(++PC) | memory.Read(++PC) << 8));
-                    cyclesUsed += 12;
+                    A = memory.Read(GetImmediateOperandWord(ref cyclesUsed));
+                    cyclesUsed += 4;
                     break;
 
                 default:
-
                     byte instructionHighNibble = (byte)(instruction >> 4);
                     switch (instructionHighNibble)
                     {
@@ -442,64 +434,42 @@ namespace GameBoy
                             // LD *, *
                             {
                                 var target = (RegisterEncoding)((instruction >> 3) & 0x7);
-                                var source = (RegisterEncoding)((instruction) & 0x7);
 
                                 if (RegisterEncoding.HLderef == target)
                                 {
                                     // Confirm that 0x76 isn't a valid instruction, which would be ld (HL), HL
                                     // presumably it does something else
-                                    memory.Write(HL, registers[RegisterEncodingToIndex(source)]);
+                                    memory.Write(HL, GetLowOperand(instruction, ref cyclesUsed));
                                     cyclesUsed += 4;
                                 }
                                 else
                                 {
                                     int iTargetRegister = RegisterEncodingToIndex(target);
-                                    if (RegisterEncoding.HLderef == source)
-                                    {
-                                        registers[iTargetRegister] = memory.Read(HL);
-                                        cyclesUsed += 4;
-                                    }
-                                    else
-                                    {
-                                        registers[iTargetRegister] = registers[RegisterEncodingToIndex(source)];
-                                    }
+                                    registers[iTargetRegister] = GetLowOperand(instruction, ref cyclesUsed);
                                 }
                             }
                             break;
 
                         case 0x8:
                             // ADD, ADC
-                            {
-                                bool useCarry = (instruction & 0x8) != 0;
-                                var operand = (RegisterEncoding)((instruction) & 0x7);
-
-                                if (RegisterEncoding.HLderef == operand)
-                                {
-                                    A = Add(A, memory.Read(HL), useCarry);
-                                    cyclesUsed += 4;
-                                }
-                                else
-                                {
-                                    A = Add(A, registers[RegisterEncodingToIndex(operand)], useCarry);
-                                }
-                            }
+                            A = Add(A, GetLowOperand(instruction, ref cyclesUsed), useCarry: (instruction & 0x8) != 0);
                             break;
 
                         case 0x9:
-                            // SUB, SUBC
-                            {
-                                bool useCarry = (instruction & 0x8) != 0;
-                                var operand = (RegisterEncoding)((instruction) & 0x7);
+                            // SUB, SBC
+                            A = Sub(A, GetLowOperand(instruction, ref cyclesUsed), useCarry: (instruction & 0x8) != 0);
+                            break;
 
-                                if (RegisterEncoding.HLderef == operand)
-                                {
-                                    A = Sub(A, memory.Read(HL), useCarry);
-                                    cyclesUsed += 4;
-                                }
-                                else
-                                {
-                                    A = Sub(A, registers[RegisterEncodingToIndex(operand)], useCarry);
-                                }
+                        case 0xA:
+                            if ((instruction & 0x8) != 0)
+                            {
+                                // XOR
+                                A = Xor(A, GetLowOperand(instruction, ref cyclesUsed));
+                            }
+                            else
+                            {
+                                // AND
+                                A = And(A, GetLowOperand(instruction, ref cyclesUsed));
                             }
                             break;
 
@@ -513,16 +483,14 @@ namespace GameBoy
                                     if (instructionHighNibble <= 0x3) // LD immediate
                                     {
                                         var target = (RegisterEncoding)((instruction >> 3) & 0x7);
-                                        var value = memory.Read(++PC);
-                                        cyclesUsed += 4;
                                         if (RegisterEncoding.HLderef == target)
                                         {
-                                            memory.Write(HL, value);
+                                            memory.Write(HL, GetImmediateOperand(ref cyclesUsed));
                                             cyclesUsed += 4;
                                         }
                                         else
                                         {
-                                            registers[RegisterEncodingToIndex(target)] = value;
+                                            registers[RegisterEncodingToIndex(target)] = GetImmediateOperand(ref cyclesUsed);
                                         }
                                     }
                                     else
@@ -545,6 +513,34 @@ namespace GameBoy
 
             // Increment the clock by the number of cycles used
             clock += cyclesUsed;
+        }
+
+        byte GetLowOperand(byte instruction, ref ushort cyclesUsed)
+        {
+            var lowOperand = (RegisterEncoding)((instruction) & 0x7);
+            byte lowOperandValue;
+            if (RegisterEncoding.HLderef == lowOperand)
+            {
+                lowOperandValue = memory.Read(HL);
+                cyclesUsed += 4;
+            }
+            else
+            {
+                lowOperandValue = registers[RegisterEncodingToIndex(lowOperand)];
+            }
+            return lowOperandValue;
+        }
+
+        byte GetImmediateOperand(ref ushort cyclesUsed)
+        {
+            cyclesUsed += 4;
+            return memory.Read(++PC);;
+        }
+
+        ushort GetImmediateOperandWord(ref ushort cyclesUsed)
+        {
+            cyclesUsed += 8;
+            return (ushort)(memory.Read(++PC) | memory.Read(++PC) << 8);
         }
 
         void SetCarryFlagsForAdd(int lhs, int rhs, bool useCarry = false)
@@ -579,6 +575,43 @@ namespace GameBoy
             flagN = false;
             flagZ = result == 0;
             return result;
+        }
+
+        byte And(byte lhs, byte rhs)
+        {
+            byte result = (byte)(lhs & rhs);
+            flagN = false;
+            flagH = true;
+            flagC = false;
+            flagZ = result == 0;
+            return result;
+        }
+
+        byte Xor(byte lhs, byte rhs)
+        {
+            byte result = (byte)(lhs ^ rhs);
+            flagN = false;
+            flagH = false;
+            flagC = false;
+            flagZ = result == 0;
+            return result;
+        }
+
+        byte Or(byte lhs, byte rhs)
+        {
+            byte result = (byte)(lhs | rhs);
+            flagN = false;
+            flagH = false;
+            flagC = false;
+            flagZ = result == 0;
+            return result;
+        }
+
+        void Cp(byte lhs, byte rhs)
+        {
+            SetCarryFlagsForSub(lhs, rhs);
+            flagN = true;
+            flagZ = rhs == lhs;
         }
     }
 }

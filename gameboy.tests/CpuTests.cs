@@ -1478,5 +1478,76 @@ namespace GameBoyTests
             TestSub(instruction, 0x18, 0x27, null, setFlagC: true, halfCarry: false, fullCarry: true, cycles: 8, rhsIsImmediate: true);
             TestSub(instruction, 0x11, 0x11, null, setFlagC: true, halfCarry: true, fullCarry: true, cycles: 8, rhsIsImmediate: true);
         }
+
+        [Fact]
+        public void TestSubA()
+        {
+            byte instruction = 0x90 | (byte)Cpu.RegisterEncoding.A;
+            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.A = value;
+            TestSub(instruction, 0x45, 0x45, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false);
+        }
+
+        [Fact]
+        public void TestSbcA()
+        {
+            byte instruction = 0x98 | (byte)Cpu.RegisterEncoding.A;
+            Action<Cpu, byte> SetRegister = (cpu, value) => cpu.A = value;
+            TestSub(instruction, 0x45, 0x45, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false);
+            TestSub(instruction, 0x18, 0x18, SetRegister, setFlagC: true, halfCarry: true, fullCarry: true);
+        }
+
+        public void TestAnd(
+            byte instruction,
+            byte lhs,
+            byte rhs,
+            Action<Cpu, byte> SetRegister,
+            bool expectedFlagH = false,
+            int cycles = 4,
+            bool rhsIsImmediate = false)
+        {
+            byte result = (byte)(lhs & rhs);
+            var test = new InstructionTest(instruction)
+                .WithClockCycles(cycles)
+                .WithTestPreparation(cpu =>
+                {
+                    cpu.A = lhs;
+                    cpu.F = 0;
+                    if (!rhsIsImmediate)
+                    {
+                        SetRegister(cpu, rhs);
+                    }
+                })
+                .WithPostValidation(cpu =>
+                {
+                    Assert.Equal(result, cpu.A);
+                    Assert.Equal(cpu.A == 0, cpu.flagZ);
+                    Assert.Equal(false, cpu.flagN);
+                    Assert.Equal(expectedFlagH, cpu.flagH);
+                    Assert.Equal(false, cpu.flagC);
+                });
+
+            if (rhsIsImmediate)
+            {
+                test.WithImmediateByte(rhs);
+            }
+
+            var runner = new InstructionTestRunner(test);
+            runner.Run();
+        }
+
+        [Fact]
+        public void TestAndSimpleRegisters()
+        {
+            // Test rhs of B-D. Skip A and (HL)
+            for (byte i = 0; i < 6; ++i)
+            {
+                Cpu.RegisterEncoding register = (Cpu.RegisterEncoding)i;
+                byte instruction = (byte)(0xA0 | (byte)register);
+                TestAnd(instruction, 0x0, 0x0, (cpu, value) => cpu.registers[Cpu.RegisterEncodingToIndex(register)] = value, expectedFlagH: true);
+                TestAnd(instruction, 0x0, 0xF, (cpu, value) => cpu.registers[Cpu.RegisterEncodingToIndex(register)] = value, expectedFlagH: true);
+                TestAnd(instruction, 0xF, 0x0, (cpu, value) => cpu.registers[Cpu.RegisterEncodingToIndex(register)] = value, expectedFlagH: true);
+                TestAnd(instruction, 0xF, 0xF, (cpu, value) => cpu.registers[Cpu.RegisterEncodingToIndex(register)] = value, expectedFlagH: true);
+            }
+        }
     }
 }
