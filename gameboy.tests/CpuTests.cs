@@ -514,7 +514,7 @@ namespace GameBoyTests
                 Cpu.RegisterEncoding encoding = (Cpu.RegisterEncoding)registerEncoding;
 
                 // Prep the HL register with an address to load into
-                if (encoding == Cpu.RegisterEncoding.HLderef)
+                if (encoding == Cpu.RegisterEncoding.HLDeref)
                 {
                     // LD (HL), n
                     cpu.HL = testLoadAddress;
@@ -529,7 +529,7 @@ namespace GameBoyTests
                 cpu.ExecuteNextInstruction();
 
                 // Validate cpu state
-                if (encoding == Cpu.RegisterEncoding.HLderef)
+                if (encoding == Cpu.RegisterEncoding.HLDeref)
                 {
                     // LD (HL), n
                     Assert.Equal(immediateValue, cpu.memory.Read(testLoadAddress));
@@ -1422,7 +1422,7 @@ namespace GameBoyTests
         [Fact]
         public void TestSubHLDeref()
         {
-            byte instruction = (byte)(0x90 | (byte)Cpu.RegisterEncoding.HLderef);
+            byte instruction = (byte)(0x90 | (byte)Cpu.RegisterEncoding.HLDeref);
             Action<Cpu, byte> SetRegister = (cpu, value) =>
             {
                 cpu.HL = 0x1234;
@@ -1437,7 +1437,7 @@ namespace GameBoyTests
         [Fact]
         public void TestSbcHLDeref()
         {
-            byte instruction = (byte)(0x98 | (byte)Cpu.RegisterEncoding.HLderef);
+            byte instruction = (byte)(0x98 | (byte)Cpu.RegisterEncoding.HLDeref);
             Action<Cpu, byte> SetRegister = (cpu, value) =>
             {
                 cpu.HL = 0x1234;
@@ -1543,11 +1543,28 @@ namespace GameBoyTests
             {
                 Cpu.RegisterEncoding register = (Cpu.RegisterEncoding)i;
                 byte instruction = (byte)(0xA0 | (byte)register);
-                TestAnd(instruction, 0x0, 0x0, (cpu, value) => cpu.registers[Cpu.RegisterEncodingToIndex(register)] = value, expectedFlagH: true);
-                TestAnd(instruction, 0x0, 0xF, (cpu, value) => cpu.registers[Cpu.RegisterEncodingToIndex(register)] = value, expectedFlagH: true);
-                TestAnd(instruction, 0xF, 0x0, (cpu, value) => cpu.registers[Cpu.RegisterEncodingToIndex(register)] = value, expectedFlagH: true);
-                TestAnd(instruction, 0xF, 0xF, (cpu, value) => cpu.registers[Cpu.RegisterEncodingToIndex(register)] = value, expectedFlagH: true);
+                Action<Cpu, Byte> SetRightOperand = (cpu, value) => cpu.registers[Cpu.RegisterEncodingToIndex(register)] = value;
+                TestAnd(instruction, 0x0, 0x0, SetRightOperand, expectedFlagH: true);
+                TestAnd(instruction, 0x0, 0xF, SetRightOperand, expectedFlagH: true);
+                TestAnd(instruction, 0xF, 0x0, SetRightOperand, expectedFlagH: true);
+                TestAnd(instruction, 0xF, 0xF, SetRightOperand, expectedFlagH: true);
             }
+        }
+
+        [Fact]
+        public void TestAndHLDeref()
+        {
+            Cpu.RegisterEncoding register = Cpu.RegisterEncoding.HLDeref;
+            byte instruction = (byte)(0xA0 | (byte)register);
+            Action<Cpu, Byte> SetRightOperand = (cpu, value) =>
+            {
+                cpu.HL = 0x1234;
+                cpu.memory.Write(cpu.HL, value);
+            };
+            TestAnd(instruction, 0x0, 0x0, SetRightOperand, expectedFlagH: true, cycles: 8);
+            TestAnd(instruction, 0x0, 0xF, SetRightOperand, expectedFlagH: true, cycles: 8);
+            TestAnd(instruction, 0xF, 0x0, SetRightOperand, expectedFlagH: true, cycles: 8);
+            TestAnd(instruction, 0xF, 0xF, SetRightOperand, expectedFlagH: true, cycles: 8);
         }
     }
 }

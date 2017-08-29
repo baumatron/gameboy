@@ -29,7 +29,7 @@ namespace GameBoy
             E = 0b011,
             H = 0b100,
             L = 0b101,
-            HLderef = 0b110,
+            HLDeref = 0b110,
             A = 0b111
         }
 
@@ -435,7 +435,7 @@ namespace GameBoy
                             {
                                 var target = (RegisterEncoding)((instruction >> 3) & 0x7);
 
-                                if (RegisterEncoding.HLderef == target)
+                                if (RegisterEncoding.HLDeref == target)
                                 {
                                     // Confirm that 0x76 isn't a valid instruction, which would be ld (HL), HL
                                     // presumably it does something else
@@ -483,7 +483,7 @@ namespace GameBoy
                                     if (instructionHighNibble <= 0x3) // LD immediate
                                     {
                                         var target = (RegisterEncoding)((instruction >> 3) & 0x7);
-                                        if (RegisterEncoding.HLderef == target)
+                                        if (RegisterEncoding.HLDeref == target)
                                         {
                                             memory.Write(HL, GetImmediateOperand(ref cyclesUsed));
                                             cyclesUsed += 4;
@@ -519,7 +519,7 @@ namespace GameBoy
         {
             var lowOperand = (RegisterEncoding)((instruction) & 0x7);
             byte lowOperandValue;
-            if (RegisterEncoding.HLderef == lowOperand)
+            if (RegisterEncoding.HLDeref == lowOperand)
             {
                 lowOperandValue = memory.Read(HL);
                 cyclesUsed += 4;
