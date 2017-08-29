@@ -1453,5 +1453,30 @@ namespace GameBoyTests
             TestSub(instruction, 0x18, 0x27, SetRegister, setFlagC: true, halfCarry: false, fullCarry: true, cycles: 8);
             TestSub(instruction, 0x11, 0x11, SetRegister, setFlagC: true, halfCarry: true, fullCarry: true, cycles: 8);
         }
+
+        [Fact]
+        public void TestSubImmediate()
+        {
+            byte instruction = 0xD6;
+            TestSub(instruction, 0x45, 0x05, null, setFlagC: false, halfCarry: false, fullCarry: false, cycles: 8, rhsIsImmediate: true);
+            TestSub(instruction, 0x45, 0x06, null, setFlagC: false, halfCarry: true, fullCarry: false, cycles: 8, rhsIsImmediate: true);
+            TestSub(instruction, 0x10, 0x20, null, setFlagC: false, halfCarry: false, fullCarry: true, cycles: 8, rhsIsImmediate: true);
+            TestSub(instruction, 0x11, 0x12, null, setFlagC: false, halfCarry: true, fullCarry: true, cycles: 8, rhsIsImmediate: true);
+        }
+
+        [Fact]
+        public void TestSbcImmediate()
+        {
+            byte instruction = 0xDE;
+            TestSub(instruction, 0x45, 0x05, null, setFlagC: false, halfCarry: false, fullCarry: false, cycles: 8, rhsIsImmediate: true);
+            TestSub(instruction, 0x45, 0x06, null, setFlagC: false, halfCarry: true, fullCarry: false, cycles: 8, rhsIsImmediate: true);
+            TestSub(instruction, 0x10, 0x20, null, setFlagC: false, halfCarry: false, fullCarry: true, cycles: 8, rhsIsImmediate: true);
+            TestSub(instruction, 0x11, 0x12, null, setFlagC: false, halfCarry: true, fullCarry: true, cycles: 8, rhsIsImmediate: true);
+
+            TestSub(instruction, 0x45, 0x04, null, setFlagC: true, halfCarry: false, fullCarry: false, cycles: 8, rhsIsImmediate: true);
+            TestSub(instruction, 0x45, 0x05, null, setFlagC: true, halfCarry: true, fullCarry: false, cycles: 8, rhsIsImmediate: true);
+            TestSub(instruction, 0x18, 0x27, null, setFlagC: true, halfCarry: false, fullCarry: true, cycles: 8, rhsIsImmediate: true);
+            TestSub(instruction, 0x11, 0x11, null, setFlagC: true, halfCarry: true, fullCarry: true, cycles: 8, rhsIsImmediate: true);
+        }
     }
 }

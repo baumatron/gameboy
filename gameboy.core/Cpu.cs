@@ -353,6 +353,13 @@ namespace GameBoy
                     SP -= 2;
                     cyclesUsed += 12;
                     break;
+                case 0xD6:
+                case 0xDE:
+                    // SUB A, n
+                    // SBC A, n
+                    A = Sub(A, memory.Read(++PC), useCarry: (instruction & 0x80) > 0);
+                    cyclesUsed += 4;
+                    break;
                 case 0xE0:
                     // LDH (0xFF00 + n), A
                     memory.Write((ushort)(0xFF00 + memory.Read(++PC)), A);
