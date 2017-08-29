@@ -384,6 +384,10 @@ namespace GameBoy
                     memory.Write(GetImmediateOperandWord(ref cyclesUsed), A);
                     cyclesUsed += 4;
                     break;
+                case 0xEE:
+                    // XOR A, n
+                    A = Xor(A, GetImmediateOperand(ref cyclesUsed));
+                    break;
                 case 0xF0:
                     // LDH A, (0xFF00 + n)
                     A = memory.Read((ushort)(0xFF00 + GetImmediateOperand(ref cyclesUsed)));
