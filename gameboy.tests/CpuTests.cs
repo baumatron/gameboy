@@ -1368,7 +1368,7 @@ namespace GameBoyTests
                 {
                     Assert.Equal(result, cpu.A);
                     Assert.Equal(cpu.A == 0, cpu.flagZ);
-                    Assert.Equal(false, cpu.flagN);
+                    Assert.Equal(true, cpu.flagN);
                     Assert.Equal(halfCarry, cpu.flagH);
                     Assert.Equal(fullCarry, cpu.flagC);
                 });
@@ -1793,6 +1793,7 @@ namespace GameBoyTests
             }
         }
 
+        [Fact]
         public void TestDec()
         {
             List<byte> testInstructions = new List<byte>
@@ -1834,12 +1835,12 @@ namespace GameBoyTests
                     GetResult = (cpu) => cpu.registers[Cpu.RegisterEncodingToIndex(register)];
                 }
 
-                Func<byte, byte, byte> GetExpectedResult = (byte lhs, byte rhs) => (byte)((lhs + 1) & 0xFF);
+                Func<byte, byte, byte> GetExpectedResult = (byte lhs, byte rhs) => (byte)((lhs - 1) & 0xFF);
 
-                TestOperation(instruction, 0x00, 0x00, GetExpectedResult, SetOperand, GetResult, expectedFlagH: true, expectedFlagC: true, expectedFlagZ: false, cycles: cycles);
-                TestOperation(instruction, 0xFF, 0xFF, GetExpectedResult, SetOperand, GetResult, expectedFlagH: false, expectedFlagC: false, expectedFlagZ: false, cycles: cycles);
-                TestOperation(instruction, 0x01, 0x01, GetExpectedResult, SetOperand, GetResult, expectedFlagH: false, expectedFlagC: false, expectedFlagZ: true, cycles: cycles);
-                TestOperation(instruction, 0xF0, 0xF0, GetExpectedResult, SetOperand, GetResult, expectedFlagH: true, expectedFlagC: false, expectedFlagZ: false, cycles: cycles);
+                TestOperation(instruction, 0x00, 0x00, GetExpectedResult, SetOperand, GetResult, expectedFlagH: true, expectedFlagC: true, expectedFlagZ: false, expectedFlagN: true, cycles: cycles);
+                TestOperation(instruction, 0xFF, 0xFF, GetExpectedResult, SetOperand, GetResult, expectedFlagH: false, expectedFlagC: false, expectedFlagZ: false, expectedFlagN: true, cycles: cycles);
+                TestOperation(instruction, 0x01, 0x01, GetExpectedResult, SetOperand, GetResult, expectedFlagH: false, expectedFlagC: false, expectedFlagZ: true, expectedFlagN: true, cycles: cycles);
+                TestOperation(instruction, 0xF0, 0xF0, GetExpectedResult, SetOperand, GetResult, expectedFlagH: true, expectedFlagC: false, expectedFlagZ: false, expectedFlagN: true, cycles: cycles);
             }
         }
     }

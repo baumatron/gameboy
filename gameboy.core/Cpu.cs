@@ -627,7 +627,7 @@ namespace GameBoy
             int carry = useCarry && flagC ? 1 : 0;
             byte result = (byte)(lhs - (rhs + carry));
             SetCarryFlagsForSub(lhs, rhs, useCarry);
-            flagN = false;
+            flagN = true;
             flagZ = result == 0;
             return result;
         }
