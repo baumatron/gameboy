@@ -443,6 +443,23 @@ namespace GameBoy
                     byte instructionHighNibble = (byte)(instruction >> 4);
                     switch (instructionHighNibble)
                     {
+                        case 0x0:
+                        case 0x1:
+                        case 0x2:
+                        case 0x3:
+                            if ((instruction & 0x7) == 0x4)
+                            {
+                                // INC *
+                                var target = (RegisterEncoding)((instruction >> 3) & 0x7);
+                                var result = Add(GetHighOperand(instruction, ref cyclesUsed), 1, false);
+                                WriteToTarget(target, result, ref cyclesUsed);
+                            }
+                            else
+                            {
+                                goto default;
+                            }
+                            break;
+
                         case 0x4:
                         case 0x5:
                         case 0x6:
@@ -450,19 +467,7 @@ namespace GameBoy
                             // LD *, *
                             {
                                 var target = (RegisterEncoding)((instruction >> 3) & 0x7);
-
-                                if (RegisterEncoding.HLDeref == target)
-                                {
-                                    // Confirm that 0x76 isn't a valid instruction, which would be ld (HL), HL
-                                    // presumably it does something else
-                                    memory.Write(HL, GetLowOperand(instruction, ref cyclesUsed));
-                                    cyclesUsed += 4;
-                                }
-                                else
-                                {
-                                    int iTargetRegister = RegisterEncodingToIndex(target);
-                                    registers[iTargetRegister] = GetLowOperand(instruction, ref cyclesUsed);
-                                }
+                                WriteToTarget(target, GetLowOperand(instruction, ref cyclesUsed), ref cyclesUsed);
                             }
                             break;
 
@@ -512,15 +517,7 @@ namespace GameBoy
                                     if (instructionHighNibble <= 0x3) // LD immediate
                                     {
                                         var target = (RegisterEncoding)((instruction >> 3) & 0x7);
-                                        if (RegisterEncoding.HLDeref == target)
-                                        {
-                                            memory.Write(HL, GetImmediateOperand(ref cyclesUsed));
-                                            cyclesUsed += 4;
-                                        }
-                                        else
-                                        {
-                                            registers[RegisterEncodingToIndex(target)] = GetImmediateOperand(ref cyclesUsed);
-                                        }
+                                        WriteToTarget(target, GetImmediateOperand(ref cyclesUsed), ref cyclesUsed);
                                     }
                                     else
                                     {
@@ -546,18 +543,40 @@ namespace GameBoy
 
         byte GetLowOperand(byte instruction, ref ushort cyclesUsed)
         {
-            var lowOperand = (RegisterEncoding)((instruction) & 0x7);
-            byte lowOperandValue;
-            if (RegisterEncoding.HLDeref == lowOperand)
+            return GetOperandValue((RegisterEncoding)((instruction) & 0x7), ref cyclesUsed);
+        }
+
+        byte GetHighOperand(byte instruction, ref ushort cyclesUsed)
+        {
+            return GetOperandValue((RegisterEncoding)((instruction >> 3) & 0x7), ref cyclesUsed);
+        }
+
+        byte GetOperandValue(RegisterEncoding operand, ref ushort cyclesUsed)
+        {
+            byte value;
+            if (RegisterEncoding.HLDeref == operand)
             {
-                lowOperandValue = memory.Read(HL);
+                value = memory.Read(HL);
                 cyclesUsed += 4;
             }
             else
             {
-                lowOperandValue = registers[RegisterEncodingToIndex(lowOperand)];
+                value = registers[RegisterEncodingToIndex(operand)];
             }
-            return lowOperandValue;
+            return value;
+        }
+
+        void WriteToTarget(RegisterEncoding target, byte value, ref ushort cyclesUsed)
+        {
+            if (RegisterEncoding.HLDeref == target)
+            {
+                memory.Write(HL, value);
+                cyclesUsed += 4;
+            }
+            else
+            {
+                registers[RegisterEncodingToIndex(target)] = value;
+            }
         }
 
         byte GetImmediateOperand(ref ushort cyclesUsed)
