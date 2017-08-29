@@ -1566,5 +1566,15 @@ namespace GameBoyTests
             TestAnd(instruction, 0xF, 0x0, SetRightOperand, expectedFlagH: true, cycles: 8);
             TestAnd(instruction, 0xF, 0xF, SetRightOperand, expectedFlagH: true, cycles: 8);
         }
+
+        [Fact]
+        public void TestAndImmediate()
+        {
+            byte instruction = 0xE6;
+            TestAnd(instruction, 0x0, 0x0, null, expectedFlagH: true, cycles: 8, rhsIsImmediate: true);
+            TestAnd(instruction, 0x0, 0xF, null, expectedFlagH: true, cycles: 8, rhsIsImmediate: true);
+            TestAnd(instruction, 0xF, 0x0, null, expectedFlagH: true, cycles: 8, rhsIsImmediate: true);
+            TestAnd(instruction, 0xF, 0xF, null, expectedFlagH: true, cycles: 8, rhsIsImmediate: true);
+        }
     }
 }

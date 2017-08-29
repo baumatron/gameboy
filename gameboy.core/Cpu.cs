@@ -374,6 +374,10 @@ namespace GameBoy
                     SP -= 2;
                     cyclesUsed += 12;
                     break;
+                case 0xE6:
+                    // AND A, n
+                    A = And(A, GetImmediateOperand(ref cyclesUsed));
+                    break;
                 case 0xEA:
                     // LD (nn), A
                     // Least significant byte first
