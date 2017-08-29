@@ -1397,5 +1397,61 @@ namespace GameBoyTests
                 TestSub(instruction, 0x11, 0x12, SetRegister, setFlagC: false, halfCarry: true, fullCarry: true);
             }
         }
+
+        [Fact]
+        public void TestSbcAllRegisters()
+        {
+            // Test rhs of B-D. Skip A and (HL)
+            for (byte i = 0; i < 6; ++i)
+            {
+                Cpu.RegisterEncoding register = (Cpu.RegisterEncoding)(i & 0b111);
+                byte instruction = (byte)(0x98 | i);
+                Action<Cpu, byte> SetRegister = (cpu, value) => cpu.registers[Cpu.RegisterEncodingToIndex(register)] = value;
+                TestSub(instruction, 0x45, 0x05, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false);
+                TestSub(instruction, 0x45, 0x06, SetRegister, setFlagC: false, halfCarry: true, fullCarry: false);
+                TestSub(instruction, 0x10, 0x20, SetRegister, setFlagC: false, halfCarry: false, fullCarry: true);
+                TestSub(instruction, 0x11, 0x12, SetRegister, setFlagC: false, halfCarry: true, fullCarry: true);
+
+                TestSub(instruction, 0x45, 0x04, SetRegister, setFlagC: true, halfCarry: false, fullCarry: false);
+                TestSub(instruction, 0x45, 0x05, SetRegister, setFlagC: true, halfCarry: true, fullCarry: false);
+                TestSub(instruction, 0x18, 0x27, SetRegister, setFlagC: true, halfCarry: false, fullCarry: true);
+                TestSub(instruction, 0x11, 0x11, SetRegister, setFlagC: true, halfCarry: true, fullCarry: true);
+            }
+        }
+
+        [Fact]
+        public void TestSubHLDeref()
+        {
+            byte instruction = (byte)(0x90 | (byte)Cpu.RegisterEncoding.HLderef);
+            Action<Cpu, byte> SetRegister = (cpu, value) =>
+            {
+                cpu.HL = 0x1234;
+                cpu.memory.Write(cpu.HL, value);
+            };
+            TestSub(instruction, 0x45, 0x05, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false, cycles: 8);
+            TestSub(instruction, 0x45, 0x06, SetRegister, setFlagC: false, halfCarry: true, fullCarry: false, cycles: 8);
+            TestSub(instruction, 0x10, 0x20, SetRegister, setFlagC: false, halfCarry: false, fullCarry: true, cycles: 8);
+            TestSub(instruction, 0x11, 0x12, SetRegister, setFlagC: false, halfCarry: true, fullCarry: true, cycles: 8);
+        }
+
+        [Fact]
+        public void TestSbcHLDeref()
+        {
+            byte instruction = (byte)(0x98 | (byte)Cpu.RegisterEncoding.HLderef);
+            Action<Cpu, byte> SetRegister = (cpu, value) =>
+            {
+                cpu.HL = 0x1234;
+                cpu.memory.Write(cpu.HL, value);
+            };
+            TestSub(instruction, 0x45, 0x05, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false, cycles: 8);
+            TestSub(instruction, 0x45, 0x06, SetRegister, setFlagC: false, halfCarry: true, fullCarry: false, cycles: 8);
+            TestSub(instruction, 0x10, 0x20, SetRegister, setFlagC: false, halfCarry: false, fullCarry: true, cycles: 8);
+            TestSub(instruction, 0x11, 0x12, SetRegister, setFlagC: false, halfCarry: true, fullCarry: true, cycles: 8);
+
+            TestSub(instruction, 0x45, 0x04, SetRegister, setFlagC: true, halfCarry: false, fullCarry: false, cycles: 8);
+            TestSub(instruction, 0x45, 0x05, SetRegister, setFlagC: true, halfCarry: true, fullCarry: false, cycles: 8);
+            TestSub(instruction, 0x18, 0x27, SetRegister, setFlagC: true, halfCarry: false, fullCarry: true, cycles: 8);
+            TestSub(instruction, 0x11, 0x11, SetRegister, setFlagC: true, halfCarry: true, fullCarry: true, cycles: 8);
+        }
     }
 }
