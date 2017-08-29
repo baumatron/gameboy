@@ -255,6 +255,7 @@ namespace GameBoy
             // is an alternate, so at the end of this
             // method we need to either record that state
             // or reset the instruction table
+            // Handy link: http://clrhome.org/table/
             byte instruction = memory.Read(this.PC);
             ushort cyclesUsed = 4;
 
@@ -423,34 +424,15 @@ namespace GameBoy
                     break;
 
                 default:
-                    // Execute generalized instructions based on operand encodings extracted from the opcode
-                    byte subInstruction = (byte)((instruction >> 6) & 0x3);
-                    switch (subInstruction)
+
+                    byte instructionHighNibble = (byte)(instruction >> 4);
+                    switch (instructionHighNibble)
                     {
-                        case 0x0:
-                            {
-                                if ((int)(instruction & 0x7) == 0b110) // LD immediate
-                                {
-                                    var target = (RegisterEncoding)((instruction >> 3) & 0x7);
-                                    var value = memory.Read(++PC);
-                                    cyclesUsed += 4;
-                                    if (RegisterEncoding.HLderef == target)
-                                    {
-                                        memory.Write(HL, value);
-                                        cyclesUsed += 4;
-                                    }
-                                    else
-                                    {
-                                        registers[RegisterEncodingToIndex(target)] = value;
-                                    }
-                                }
-                                else
-                                {
-                                    throw new Exception($"Instruction not implemented 0x{instruction:X2}");
-                                }
-                            }
-                            break;
-                        case 0x1: // LD
+                        case 0x4:
+                        case 0x5:
+                        case 0x6:
+                        case 0x7:
+                            // LD *, *
                             {
                                 var target = (RegisterEncoding)((instruction >> 3) & 0x7);
                                 var source = (RegisterEncoding)((instruction) & 0x7);
@@ -477,25 +459,77 @@ namespace GameBoy
                                 }
                             }
                             break;
-                        case 0x2: // ADD, ADC
-                            {
-                                bool useCarry = (instruction & 0x8) > 0;
-                                var source = (RegisterEncoding)((instruction) & 0x7);
 
-                                if (RegisterEncoding.HLderef == source)
+                        case 0x8:
+                            // ADD, ADC
+                            {
+                                bool useCarry = (instruction & 0x8) != 0;
+                                var operand = (RegisterEncoding)((instruction) & 0x7);
+
+                                if (RegisterEncoding.HLderef == operand)
                                 {
                                     A = Add(A, memory.Read(HL), useCarry);
                                     cyclesUsed += 4;
                                 }
                                 else
                                 {
-                                    A = Add(A, registers[RegisterEncodingToIndex(source)], useCarry);
+                                    A = Add(A, registers[RegisterEncodingToIndex(operand)], useCarry);
                                 }
                             }
                             break;
+
+                        case 0x9:
+                            // SUB, SUBC
+                            {
+                                bool useCarry = (instruction & 0x8) != 0;
+                                var operand = (RegisterEncoding)((instruction) & 0x7);
+
+                                if (RegisterEncoding.HLderef == operand)
+                                {
+                                    A = Sub(A, memory.Read(HL), useCarry);
+                                    cyclesUsed += 4;
+                                }
+                                else
+                                {
+                                    A = Sub(A, registers[RegisterEncodingToIndex(operand)], useCarry);
+                                }
+                            }
+                            break;
+
                         default:
-                            throw new Exception($"Instruction not implemented: 0x{instruction:X2}");
+
+                            byte instructionLowNibble = (byte)(instruction & 0xF);
+                            switch (instructionLowNibble)
+                            {
+                                case 0x6:
+                                case 0xE:
+                                    if (instructionHighNibble <= 0x3) // LD immediate
+                                    {
+                                        var target = (RegisterEncoding)((instruction >> 3) & 0x7);
+                                        var value = memory.Read(++PC);
+                                        cyclesUsed += 4;
+                                        if (RegisterEncoding.HLderef == target)
+                                        {
+                                            memory.Write(HL, value);
+                                            cyclesUsed += 4;
+                                        }
+                                        else
+                                        {
+                                            registers[RegisterEncodingToIndex(target)] = value;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        goto default;
+                                    }
+                                    break;
+
+                                default:
+                                    throw new Exception($"Instruction not implemented: 0x{instruction:X2}");
+                            }
+                            break;
                     }
+
                     break;
             }
 
@@ -513,11 +547,28 @@ namespace GameBoy
             flagC = ((lhs & 0xFF) + (rhs & 0xFF) + carry) > 0xFF;
         }
 
+        void SetCarryFlagsForSub(int lhs, int rhs, bool useCarry = false)
+        {
+            int carry = useCarry && flagC ? 1 : 0;
+            flagH = ((lhs & 0xF) - ((rhs & 0xF) + carry)) < 0;
+            flagC = ((lhs & 0xFF) - ((rhs & 0xFF) + carry)) < 0;
+        }
+
         byte Add(byte lhs, byte rhs, bool useCarry)
         {
             int carry = useCarry && flagC ? 1 : 0;
             byte result = (byte)(lhs + rhs + carry);
             SetCarryFlagsForAdd(lhs, rhs, useCarry);
+            flagN = false;
+            flagZ = result == 0;
+            return result;
+        }
+
+        byte Sub(byte lhs, byte rhs, bool useCarry)
+        {
+            int carry = useCarry && flagC ? 1 : 0;
+            byte result = (byte)(lhs - (rhs + carry));
+            SetCarryFlagsForSub(lhs, rhs, useCarry);
             flagN = false;
             flagZ = result == 0;
             return result;
