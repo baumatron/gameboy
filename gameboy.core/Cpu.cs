@@ -454,6 +454,13 @@ namespace GameBoy
                                 var result = Add(GetHighOperand(instruction, ref cyclesUsed), 1, false);
                                 WriteToTarget(target, result, ref cyclesUsed);
                             }
+                            else if ((instruction & 0x7) == 0x5)
+                            {
+                                // DEC *
+                                var target = (RegisterEncoding)((instruction >> 3) & 0x7);
+                                var result = Sub(GetHighOperand(instruction, ref cyclesUsed), 1, false);
+                                WriteToTarget(target, result, ref cyclesUsed);
+                            }
                             else
                             {
                                 goto default;
