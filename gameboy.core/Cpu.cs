@@ -434,6 +434,10 @@ namespace GameBoy
                     A = memory.Read(GetImmediateOperandWord(ref cyclesUsed));
                     cyclesUsed += 4;
                     break;
+                case 0xFE:
+                    // CP A, n
+                    Compare(A, GetImmediateOperand(ref cyclesUsed));
+                    break;
 
                 default:
                     byte instructionHighNibble = (byte)(instruction >> 4);
@@ -494,7 +498,7 @@ namespace GameBoy
                             else
                             {
                                 // CP
-                                Cp(A, GetLowOperand(instruction, ref cyclesUsed));
+                                Compare(A, GetLowOperand(instruction, ref cyclesUsed));
                             }
                             break;
 
@@ -632,7 +636,7 @@ namespace GameBoy
             return result;
         }
 
-        void Cp(byte lhs, byte rhs)
+        void Compare(byte lhs, byte rhs)
         {
             SetCarryFlagsForSub(lhs, rhs);
             flagN = true;

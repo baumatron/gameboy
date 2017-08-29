@@ -1503,10 +1503,12 @@ namespace GameBoyTests
             Func<byte, byte, byte> GetExpectedResult,
             Action<Cpu, byte> SetRegister,
             bool expectedFlagH = false,
+            bool expectedFlagC = false,
+            bool expectedFlagN = false,
+            bool? expectedFlagZ = null,
             int cycles = 4,
             bool rhsIsImmediate = false)
         {
-            byte result = GetExpectedResult(lhs, rhs);
             var test = new InstructionTest(instruction)
                 .WithClockCycles(cycles)
                 .WithTestPreparation(cpu =>
@@ -1520,11 +1522,21 @@ namespace GameBoyTests
                 })
                 .WithPostValidation(cpu =>
                 {
-                    Assert.Equal(result, cpu.A);
-                    Assert.Equal(cpu.A == 0, cpu.flagZ);
-                    Assert.Equal(false, cpu.flagN);
+                    if (null != GetExpectedResult)
+                    {
+                        Assert.Equal(GetExpectedResult(lhs, rhs), cpu.A);
+                    }
+                    if (null == expectedFlagZ)
+                    {
+                        Assert.Equal(cpu.A == 0, cpu.flagZ);
+                    }
+                    else
+                    {
+                        Assert.Equal(expectedFlagZ.Value, cpu.flagZ);
+                    }
+                    Assert.Equal(expectedFlagN, cpu.flagN);
                     Assert.Equal(expectedFlagH, cpu.flagH);
-                    Assert.Equal(false, cpu.flagC);
+                    Assert.Equal(expectedFlagC, cpu.flagC);
                 });
 
             if (rhsIsImmediate)
@@ -1669,6 +1681,50 @@ namespace GameBoyTests
             TestOperation(instruction, 0x0, 0xF, GetExpectedResult, null, expectedFlagH: false, cycles: 8, rhsIsImmediate: true);
             TestOperation(instruction, 0xF, 0x0, GetExpectedResult, null, expectedFlagH: false, cycles: 8, rhsIsImmediate: true);
             TestOperation(instruction, 0xF, 0xF, GetExpectedResult, null, expectedFlagH: false, cycles: 8, rhsIsImmediate: true);
+        }
+
+        [Fact]
+        public void TestCpSimpleRegisters()
+        {
+            // Test rhs of B-D. Skip A
+            for (byte i = 0; i < 7; ++i)
+            {
+                int cycles = 4;
+                Cpu.RegisterEncoding register = (Cpu.RegisterEncoding)i;
+                byte instruction = (byte)(0xB8 | (byte)register);
+                Action<Cpu, Byte> SetRightOperand;
+
+                if (register == Cpu.RegisterEncoding.HLDeref)
+                {
+                    cycles = 8;
+                    SetRightOperand = (cpu, value) =>
+                    {
+                        cpu.HL = 0x1234;
+                        cpu.memory.Write(cpu.HL, value);
+                    };
+                }
+                else
+                {
+                    SetRightOperand = (cpu, value) => cpu.registers[Cpu.RegisterEncodingToIndex(register)] = value;
+                }
+
+                TestOperation(instruction, 0x45, 0x05, null, SetRightOperand, expectedFlagH: false, expectedFlagC: false, expectedFlagN: true, expectedFlagZ: false, cycles: cycles);
+                TestOperation(instruction, 0x45, 0x06, null, SetRightOperand, expectedFlagH: true, expectedFlagC: false, expectedFlagN: true, expectedFlagZ: false, cycles: cycles);
+                TestOperation(instruction, 0x10, 0x20, null, SetRightOperand, expectedFlagH: false, expectedFlagC: true, expectedFlagN: true, expectedFlagZ: false, cycles: cycles);
+                TestOperation(instruction, 0x11, 0x12, null, SetRightOperand, expectedFlagH: true, expectedFlagC: true, expectedFlagN: true, expectedFlagZ: false, cycles: cycles);
+                TestOperation(instruction, 0x12, 0x12, null, SetRightOperand, expectedFlagH: false, expectedFlagC: false, expectedFlagN: true, expectedFlagZ: true, cycles: cycles);
+            }
+        }
+
+        [Fact]
+        public void TestCpImmediate()
+        {
+            byte instruction = 0xFE;
+            TestOperation(instruction, 0x45, 0x05, null, null, expectedFlagH: false, expectedFlagC: false, expectedFlagN: true, expectedFlagZ: false, cycles: 8, rhsIsImmediate: true);
+            TestOperation(instruction, 0x45, 0x06, null, null, expectedFlagH: true, expectedFlagC: false, expectedFlagN: true, expectedFlagZ: false, cycles: 8, rhsIsImmediate: true);
+            TestOperation(instruction, 0x10, 0x20, null, null, expectedFlagH: false, expectedFlagC: true, expectedFlagN: true, expectedFlagZ: false, cycles: 8, rhsIsImmediate: true);
+            TestOperation(instruction, 0x11, 0x12, null, null, expectedFlagH: true, expectedFlagC: true, expectedFlagN: true, expectedFlagZ: false, cycles: 8, rhsIsImmediate: true);
+            TestOperation(instruction, 0x12, 0x12, null, null, expectedFlagH: false, expectedFlagC: false, expectedFlagN: true, expectedFlagZ: true, cycles: 8, rhsIsImmediate: true);
         }
     }
 }
