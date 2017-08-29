@@ -409,6 +409,10 @@ namespace GameBoy
                     SP -= 2;
                     cyclesUsed += 12;
                     break;
+                case 0xF6:
+                    // OR A, n
+                    A = Or(A, GetImmediateOperand(ref cyclesUsed));
+                    break;
                 case 0xF8:
                     // LD HL, SP+n
                     int lhs = SP;
@@ -469,15 +473,28 @@ namespace GameBoy
                             break;
 
                         case 0xA:
-                            if ((instruction & 0x8) != 0)
+                            if ((instruction & 0x8) == 0)
+                            {
+                                // AND
+                                A = And(A, GetLowOperand(instruction, ref cyclesUsed));
+                            }
+                            else
                             {
                                 // XOR
                                 A = Xor(A, GetLowOperand(instruction, ref cyclesUsed));
                             }
+                            break;
+
+                        case 0xB:
+                            if ((instruction & 0x8) == 0)
+                            {
+                                // OR
+                                A = Or(A, GetLowOperand(instruction, ref cyclesUsed));
+                            }
                             else
                             {
-                                // AND
-                                A = And(A, GetLowOperand(instruction, ref cyclesUsed));
+                                // CP
+                                Cp(A, GetLowOperand(instruction, ref cyclesUsed));
                             }
                             break;
 

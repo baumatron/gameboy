@@ -1625,5 +1625,50 @@ namespace GameBoyTests
             TestOperation(instruction, 0xF, 0x0, GetExpectedResult, null, expectedFlagH: false, cycles: 8, rhsIsImmediate: true);
             TestOperation(instruction, 0xF, 0xF, GetExpectedResult, null, expectedFlagH: false, cycles: 8, rhsIsImmediate: true);
         }
+
+        [Fact]
+        public void TestOrSimpleRegisters()
+        {
+            // Test rhs of B-D. Skip A and (HL)
+            for (byte i = 0; i < 6; ++i)
+            {
+                Cpu.RegisterEncoding register = (Cpu.RegisterEncoding)i;
+                byte instruction = (byte)(0xB0 | (byte)register);
+                Func<byte, byte, byte> GetExpectedResult = (lhs, rhs) => (byte)(lhs | rhs);
+                Action<Cpu, Byte> SetRightOperand = (cpu, value) => cpu.registers[Cpu.RegisterEncodingToIndex(register)] = value;
+                TestOperation(instruction, 0x0, 0x0, GetExpectedResult, SetRightOperand, expectedFlagH: false);
+                TestOperation(instruction, 0x0, 0xF, GetExpectedResult, SetRightOperand, expectedFlagH: false);
+                TestOperation(instruction, 0xF, 0x0, GetExpectedResult, SetRightOperand, expectedFlagH: false);
+                TestOperation(instruction, 0xF, 0xF, GetExpectedResult, SetRightOperand, expectedFlagH: false);
+            }
+        }
+
+        [Fact]
+        public void TestOrHLDeref()
+        {
+            Cpu.RegisterEncoding register = Cpu.RegisterEncoding.HLDeref;
+            byte instruction = (byte)(0xB0 | (byte)register);
+            Func<byte, byte, byte> GetExpectedResult = (lhs, rhs) => (byte)(lhs | rhs);
+            Action<Cpu, Byte> SetRightOperand = (cpu, value) =>
+            {
+                cpu.HL = 0x1234;
+                cpu.memory.Write(cpu.HL, value);
+            };
+            TestOperation(instruction, 0x0, 0x0, GetExpectedResult, SetRightOperand, expectedFlagH: false, cycles: 8);
+            TestOperation(instruction, 0x0, 0xF, GetExpectedResult, SetRightOperand, expectedFlagH: false, cycles: 8);
+            TestOperation(instruction, 0xF, 0x0, GetExpectedResult, SetRightOperand, expectedFlagH: false, cycles: 8);
+            TestOperation(instruction, 0xF, 0xF, GetExpectedResult, SetRightOperand, expectedFlagH: false, cycles: 8);
+        }
+
+        [Fact]
+        public void TestOrImmediate()
+        {
+            byte instruction = 0xF6;
+            Func<byte, byte, byte> GetExpectedResult = (lhs, rhs) => (byte)(lhs | rhs);
+            TestOperation(instruction, 0x0, 0x0, GetExpectedResult, null, expectedFlagH: false, cycles: 8, rhsIsImmediate: true);
+            TestOperation(instruction, 0x0, 0xF, GetExpectedResult, null, expectedFlagH: false, cycles: 8, rhsIsImmediate: true);
+            TestOperation(instruction, 0xF, 0x0, GetExpectedResult, null, expectedFlagH: false, cycles: 8, rhsIsImmediate: true);
+            TestOperation(instruction, 0xF, 0xF, GetExpectedResult, null, expectedFlagH: false, cycles: 8, rhsIsImmediate: true);
+        }
     }
 }
