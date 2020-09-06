@@ -12,7 +12,7 @@ namespace GameBoyTests
         [Fact]
         public void TestGettingCombinedRegisters()
         {
-            var cpu = new GameBoy.Cpu();
+            var cpu = new GameBoy.Cpu(new Ram());
 
             cpu.A = 0x0A;
             cpu.F = 0x0F;
@@ -34,7 +34,7 @@ namespace GameBoyTests
         [Fact]
         public void TestSettingCombinedRegisters()
         {
-            var cpu = new GameBoy.Cpu();
+            var cpu = new GameBoy.Cpu(new Ram());
 
             cpu.AF = 0x0A0F;
             Assert.Equal(0x0A, cpu.A);
@@ -56,7 +56,7 @@ namespace GameBoyTests
         [Fact]
         public void TestGettingFlags()
         {
-            var cpu = new GameBoy.Cpu();
+            var cpu = new GameBoy.Cpu(new Ram());
 
             cpu.F = (byte)(1 << 7);
             Assert.True(cpu.flagZ);
@@ -110,7 +110,7 @@ namespace GameBoyTests
         [Fact]
         public void TestSettingFlags()
         {
-            var cpu = new GameBoy.Cpu();
+            var cpu = new GameBoy.Cpu(new Ram());
 
             cpu.flagZ = true;
             Assert.True(0 != (cpu.F & (1 << 7)));
@@ -140,7 +140,7 @@ namespace GameBoyTests
         [Fact]
         public void TestCpuInit()
         {
-            var cpu = new GameBoy.Cpu();
+            var cpu = new GameBoy.Cpu(new Ram());
             cpu.Init();
 
             // Ensure the program counter is in the right place
@@ -175,16 +175,16 @@ namespace GameBoyTests
             Assert.NotEqual(hlAddress, cpu.PC + 1);
             // Save register and memory state
             ushort oldHL = cpu.HL;
-            byte oldMemory = cpu.memory.Read(hlAddress);
+            byte oldMemory = cpu._memory.Read(hlAddress);
 
             cpu.HL = hlAddress;
             byte expected = (byte)random.Next(0xFF);
-            cpu.memory.Write(cpu.HL, expected);
+            cpu._memory.Write(cpu.HL, expected);
             cpu.ExecuteNextInstruction();
             Assert.Equal(expected, to);
 
             // Restore previous register and memory state
-            cpu.memory.Write(hlAddress, oldMemory);
+            cpu._memory.Write(hlAddress, oldMemory);
             cpu.HL = oldHL;
         }
 
@@ -203,27 +203,27 @@ namespace GameBoyTests
             Assert.NotEqual(hlAddress, cpu.PC + 1);
             // Save register and memory state
             ushort oldHL = cpu.HL;
-            byte oldMemory = cpu.memory.Read(hlAddress);
+            byte oldMemory = cpu._memory.Read(hlAddress);
 
             cpu.HL = hlAddress;
             cpu.ExecuteNextInstruction();
-            Assert.Equal(from, cpu.memory.Read(cpu.HL));
+            Assert.Equal(from, cpu._memory.Read(cpu.HL));
 
             // Restore previous register and memory state
-            cpu.memory.Write(hlAddress, oldMemory);
+            cpu._memory.Write(hlAddress, oldMemory);
             cpu.HL = oldHL;
         }
 
         internal void TestLDToAddress(GameBoy.Cpu cpu, ushort address, byte expected)
         {
             cpu.ExecuteNextInstruction();
-            Assert.Equal(expected, cpu.memory.Read(address));
+            Assert.Equal(expected, cpu._memory.Read(address));
         }
 
         [Fact]
         public void TestLD()
         {
-            var cpu = new GameBoy.Cpu();
+            var cpu = new GameBoy.Cpu(new Ram());
             cpu.Init();
 
             var testTasks = new List<Action>();
@@ -232,79 +232,79 @@ namespace GameBoyTests
             ushort pc = 0x100;
             ushort testLoadAddress = 0x0001;
             byte testLoadData = 0x1A;
-            cpu.memory.Write(testLoadAddress, testLoadData);
+            cpu._memory.Write(testLoadAddress, testLoadData);
 
             // LD A, reg
             byte baseOpCode = 0x78;
-            cpu.memory.Write(pc++, baseOpCode);
+            cpu._memory.Write(pc++, baseOpCode);
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x01));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x01));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x02));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x02));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x03));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x03));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x04));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x04));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x05));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x05));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x06));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x06));
             testTasks.Add(() => TestLDFromHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x07));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)]));
 
             // LD (BC), A
-            cpu.memory.Write(pc++, 0x02);
+            cpu._memory.Write(pc++, 0x02);
             testTasks.Add(() =>
             {
-                cpu.memory.Write(testLoadAddress, 0xFF); // Clear old data
+                cpu._memory.Write(testLoadAddress, 0xFF); // Clear old data
                 cpu.A = testLoadData;
                 cpu.BC = testLoadAddress;
                 TestLDToAddress(cpu, testLoadAddress, cpu.A);
             });
 
             // LD (DE), A
-            cpu.memory.Write(pc++, 0x12);
+            cpu._memory.Write(pc++, 0x12);
             testTasks.Add(() =>
             {
-                cpu.memory.Write(testLoadAddress, 0xFF); // Clear old data
+                cpu._memory.Write(testLoadAddress, 0xFF); // Clear old data
                 cpu.A = testLoadData;
                 cpu.DE = testLoadAddress;
                 TestLDToAddress(cpu, testLoadAddress, cpu.A);
             });
 
             // LD (HL), A
-            cpu.memory.Write(pc++, 0x77);
+            cpu._memory.Write(pc++, 0x77);
             testTasks.Add(() =>
             {
-                cpu.memory.Write(testLoadAddress, 0xFF); // Clear old data
+                cpu._memory.Write(testLoadAddress, 0xFF); // Clear old data
                 cpu.A = testLoadData;
                 cpu.HL = testLoadAddress;
                 TestLDToAddress(cpu, testLoadAddress, cpu.A);
             });
 
             // LD (nn), A
-            cpu.memory.Write(pc++, 0xEA);
-            cpu.memory.Write(pc++, (byte)(testLoadAddress & 0xFF));
-            cpu.memory.Write(pc++, (byte)(testLoadAddress >> 8));
+            cpu._memory.Write(pc++, 0xEA);
+            cpu._memory.Write(pc++, (byte)(testLoadAddress & 0xFF));
+            cpu._memory.Write(pc++, (byte)(testLoadAddress >> 8));
             testTasks.Add(() =>
             {
-                cpu.memory.Write(testLoadAddress, 0xFF); // Clear old data
+                cpu._memory.Write(testLoadAddress, 0xFF); // Clear old data
                 cpu.A = testLoadData;
                 TestLDToAddress(cpu, testLoadAddress, cpu.A);
             });
 
             // LD A, (nn)
-            cpu.memory.Write(pc++, 0xFA);
-            cpu.memory.Write(pc++, (byte)(testLoadAddress & 0xFF));
-            cpu.memory.Write(pc++, (byte)(testLoadAddress >> 8));
+            cpu._memory.Write(pc++, 0xFA);
+            cpu._memory.Write(pc++, (byte)(testLoadAddress & 0xFF));
+            cpu._memory.Write(pc++, (byte)(testLoadAddress >> 8));
             testTasks.Add(() =>
             {
                 TestLDFromAddress(cpu, testLoadData, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)]);
@@ -312,178 +312,178 @@ namespace GameBoyTests
 
             // LD B, reg
             baseOpCode = 0x40;
-            cpu.memory.Write(pc++, baseOpCode);
+            cpu._memory.Write(pc++, baseOpCode);
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x01));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x01));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x02));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x02));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x03));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x03));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x04));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x04));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x05));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x05));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x06));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x06));
             testTasks.Add(() => TestLDFromHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x07));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)]));
 
             // LD C, reg
             baseOpCode = 0x48;
-            cpu.memory.Write(pc++, baseOpCode);
+            cpu._memory.Write(pc++, baseOpCode);
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x01));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x01));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x02));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x02));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x03));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x03));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x04));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x04));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x05));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x05));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x06));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x06));
             testTasks.Add(() => TestLDFromHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x07));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)]));
 
             // LD D, reg
             baseOpCode = 0x50;
-            cpu.memory.Write(pc++, baseOpCode);
+            cpu._memory.Write(pc++, baseOpCode);
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x01));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x01));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x02));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x02));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x03));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x03));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x04));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x04));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x05));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x05));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x06));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x06));
             testTasks.Add(() => TestLDFromHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x07));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)]));
 
             // LD E, reg
             baseOpCode = 0x58;
-            cpu.memory.Write(pc++, baseOpCode);
+            cpu._memory.Write(pc++, baseOpCode);
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x01));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x01));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x02));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x02));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x03));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x03));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x04));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x04));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x05));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x05));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x06));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x06));
             testTasks.Add(() => TestLDFromHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x07));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)]));
 
             // LD H, reg
             baseOpCode = 0x60;
-            cpu.memory.Write(pc++, baseOpCode);
+            cpu._memory.Write(pc++, baseOpCode);
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x01));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x01));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x02));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x02));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x03));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x03));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x04));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x04));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x05));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x05));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x06));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x06));
             testTasks.Add(() => TestLDFromHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x07));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)]));
 
             // LD L, reg
             baseOpCode = 0x68;
-            cpu.memory.Write(pc++, baseOpCode);
+            cpu._memory.Write(pc++, baseOpCode);
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x01));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x01));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x02));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x02));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x03));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x03));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x04));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x04));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x05));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x05));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x06));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x06));
             testTasks.Add(() => TestLDFromHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x07));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x07));
             testTasks.Add(() => TestLDFromRegister(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)], ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)]));
 
             // LD (HL), reg
             baseOpCode = 0x70;
-            cpu.memory.Write(pc++, baseOpCode);
+            cpu._memory.Write(pc++, baseOpCode);
             testTasks.Add(() => TestLDToHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.B)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x01));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x01));
             testTasks.Add(() => TestLDToHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.C)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x02));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x02));
             testTasks.Add(() => TestLDToHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.D)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x03));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x03));
             testTasks.Add(() => TestLDToHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.E)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x04));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x04));
             testTasks.Add(() => TestLDToHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.H)]));
 
-            cpu.memory.Write(pc++, (byte)(baseOpCode + 0x05));
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x05));
             testTasks.Add(() => TestLDToHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)]));
 
             foreach (var task in testTasks)
@@ -495,7 +495,7 @@ namespace GameBoyTests
         [Fact]
         public void TestLDImmediate()
         {
-            var cpu = new GameBoy.Cpu();
+            var cpu = new GameBoy.Cpu(new Ram());
             cpu.Init();
 
             // Set up some test data for address loads
@@ -508,8 +508,8 @@ namespace GameBoyTests
                 int startingClock = cpu.clock;
 
                 byte instruction = (byte)(registerEncoding << 3 | 0b110);
-                cpu.memory.Write(pc++, instruction);
-                cpu.memory.Write(pc++, immediateValue);
+                cpu._memory.Write(pc++, instruction);
+                cpu._memory.Write(pc++, immediateValue);
 
                 Cpu.RegisterEncoding encoding = (Cpu.RegisterEncoding)registerEncoding;
 
@@ -519,7 +519,7 @@ namespace GameBoyTests
                     // LD (HL), n
                     cpu.HL = testLoadAddress;
 
-                    Assert.NotEqual(immediateValue, cpu.memory.Read(testLoadAddress));
+                    Assert.NotEqual(immediateValue, cpu._memory.Read(testLoadAddress));
                 }
                 else
                 {
@@ -532,7 +532,7 @@ namespace GameBoyTests
                 if (encoding == Cpu.RegisterEncoding.HLDeref)
                 {
                     // LD (HL), n
-                    Assert.Equal(immediateValue, cpu.memory.Read(testLoadAddress));
+                    Assert.Equal(immediateValue, cpu._memory.Read(testLoadAddress));
                     Assert.Equal(12, cpu.clock - startingClock);
                 }
                 else
@@ -549,7 +549,7 @@ namespace GameBoyTests
         [Fact]
         public void TestLDFromBCtoA()
         {
-            var cpu = new GameBoy.Cpu();
+            var cpu = new GameBoy.Cpu(new Ram());
             cpu.Init();
 
             int startingClock = cpu.clock;
@@ -560,10 +560,10 @@ namespace GameBoyTests
             const byte testValue = 0x1A;
 
             // Prep memory with LD A, (BC) instruction
-            cpu.memory.Write(pc++, 0x0A);
+            cpu._memory.Write(pc++, 0x0A);
 
             // Prep memory with value
-            cpu.memory.Write(testLoadAddress, testValue);
+            cpu._memory.Write(testLoadAddress, testValue);
 
             // Prep BC register
             cpu.BC = testLoadAddress;
@@ -582,7 +582,7 @@ namespace GameBoyTests
         [Fact]
         public void TestLDFromDEtoA()
         {
-            var cpu = new GameBoy.Cpu();
+            var cpu = new GameBoy.Cpu(new Ram());
             cpu.Init();
 
             int startingClock = cpu.clock;
@@ -593,10 +593,10 @@ namespace GameBoyTests
             const byte testValue = 0x1A;
 
             // Prep memory with LD A, (DE) instruction
-            cpu.memory.Write(pc++, 0x1A);
+            cpu._memory.Write(pc++, 0x1A);
 
             // Prep memory with value
-            cpu.memory.Write(testLoadAddress, testValue);
+            cpu._memory.Write(testLoadAddress, testValue);
 
             // Prep DE register
             cpu.DE = testLoadAddress;
@@ -620,7 +620,7 @@ namespace GameBoyTests
         [Fact]
         public void TestLDFromCOffsetToA()
         {
-            var cpu = new Cpu();
+            var cpu = new Cpu(new Ram());
             cpu.Init();
 
             int startingClock = cpu.clock;
@@ -630,8 +630,8 @@ namespace GameBoyTests
             const ushort testLoadAddress = 0xFF00 + addressOffset;
             const byte testValue = 0x65;
 
-            cpu.memory.Write(pc++, 0xF2);
-            cpu.memory.Write(testLoadAddress, testValue);
+            cpu._memory.Write(pc++, 0xF2);
+            cpu._memory.Write(testLoadAddress, testValue);
             cpu.C = addressOffset;
 
             Assert.NotEqual(testValue, cpu.A);
@@ -646,7 +646,7 @@ namespace GameBoyTests
         [Fact]
         public void TestLDToCOffsetFromA()
         {
-            var cpu = new Cpu();
+            var cpu = new Cpu(new Ram());
             cpu.Init();
 
             int startingClock = cpu.clock;
@@ -656,22 +656,22 @@ namespace GameBoyTests
             const ushort testLoadAddress = 0xFF00 + addressOffset;
             const byte testValue = 0x65;
 
-            cpu.memory.Write(pc++, 0xE2);
+            cpu._memory.Write(pc++, 0xE2);
             cpu.C = addressOffset;
             cpu.A = testValue;
 
-            Assert.NotEqual(testValue, cpu.memory.Read(testLoadAddress));
+            Assert.NotEqual(testValue, cpu._memory.Read(testLoadAddress));
 
             cpu.ExecuteNextInstruction();
 
-            Assert.Equal(testValue, cpu.memory.Read(testLoadAddress));
+            Assert.Equal(testValue, cpu._memory.Read(testLoadAddress));
             Assert.Equal(pc, cpu.PC);
             Assert.Equal(8, cpu.clock - startingClock);
         }
 
         internal void DoLDFromHLAddressToATest(byte instruction, int hlOffsetAfterLoad)
         {
-            var cpu = new Cpu();
+            var cpu = new Cpu(new Ram());
             cpu.Init();
 
             int startingClock = cpu.clock;
@@ -680,9 +680,9 @@ namespace GameBoyTests
             const ushort testLoadAddress = 0xF000;
             const byte testValue = 0x65;
 
-            cpu.memory.Write(pc++, instruction);
+            cpu._memory.Write(pc++, instruction);
             cpu.HL = testLoadAddress;
-            cpu.memory.Write(testLoadAddress, testValue);
+            cpu._memory.Write(testLoadAddress, testValue);
 
             Assert.NotEqual(testValue, cpu.A);
 
@@ -708,7 +708,7 @@ namespace GameBoyTests
 
         internal void DoLDFromAToHLAddressTest(byte instruction, int hlOffsetAfterLoad)
         {
-            var cpu = new Cpu();
+            var cpu = new Cpu(new Ram());
             cpu.Init();
 
             int startingClock = cpu.clock;
@@ -717,15 +717,15 @@ namespace GameBoyTests
             const ushort testLoadAddress = 0xF000;
             const byte testValue = 0x65;
 
-            cpu.memory.Write(pc++, instruction);
+            cpu._memory.Write(pc++, instruction);
             cpu.HL = testLoadAddress;
             cpu.A = testValue;
 
-            Assert.NotEqual(testValue, cpu.memory.Read(testLoadAddress));
+            Assert.NotEqual(testValue, cpu._memory.Read(testLoadAddress));
 
             cpu.ExecuteNextInstruction();
 
-            Assert.Equal(testValue, cpu.memory.Read(testLoadAddress));
+            Assert.Equal(testValue, cpu._memory.Read(testLoadAddress));
             Assert.Equal(pc, cpu.PC);
             Assert.Equal(testLoadAddress + hlOffsetAfterLoad, cpu.HL);
             Assert.Equal(8, cpu.clock - startingClock);
@@ -746,7 +746,7 @@ namespace GameBoyTests
         [Fact]
         public void TestLoadFromAToImmediateAddressByte()
         {
-            var cpu = new Cpu();
+            var cpu = new Cpu(new Ram());
             cpu.Init();
 
             int startingClock = cpu.clock;
@@ -756,15 +756,15 @@ namespace GameBoyTests
             const ushort testLoadAddress = 0xFF00 + offset;
             const byte testValue = 0x65;
 
-            cpu.memory.Write(pc++, 0xE0);
-            cpu.memory.Write(pc++, offset);
+            cpu._memory.Write(pc++, 0xE0);
+            cpu._memory.Write(pc++, offset);
             cpu.A = testValue;
 
-            Assert.NotEqual(testValue, cpu.memory.Read(testLoadAddress));
+            Assert.NotEqual(testValue, cpu._memory.Read(testLoadAddress));
 
             cpu.ExecuteNextInstruction();
 
-            Assert.Equal(testValue, cpu.memory.Read(testLoadAddress));
+            Assert.Equal(testValue, cpu._memory.Read(testLoadAddress));
             Assert.Equal(pc, cpu.PC);
             Assert.Equal(12, cpu.clock - startingClock);
         }
@@ -772,7 +772,7 @@ namespace GameBoyTests
         [Fact]
         public void TestLoadFromImmediateAddressByteToA()
         {
-            var cpu = new Cpu();
+            var cpu = new Cpu(new Ram());
             cpu.Init();
 
             int startingClock = cpu.clock;
@@ -782,9 +782,9 @@ namespace GameBoyTests
             const ushort testLoadAddress = 0xFF00 + offset;
             const byte testValue = 0x65;
 
-            cpu.memory.Write(pc++, 0xF0);
-            cpu.memory.Write(pc++, offset);
-            cpu.memory.Write(testLoadAddress, testValue);
+            cpu._memory.Write(pc++, 0xF0);
+            cpu._memory.Write(pc++, offset);
+            cpu._memory.Write(testLoadAddress, testValue);
 
             Assert.NotEqual(testValue, cpu.A);
 
@@ -808,8 +808,8 @@ namespace GameBoyTests
             {
                 base.PrepareTest();
 
-                _cpu.memory.Write(_testPc++, (byte)(_testWord & 0xFF));
-                _cpu.memory.Write(_testPc++, (byte)(_testWord >> 8));
+                _cpu._memory.Write(_testPc++, (byte)(_testWord & 0xFF));
+                _cpu._memory.Write(_testPc++, (byte)(_testWord >> 8));
             }
 
             public override void ValidatePreExecute()
@@ -1058,11 +1058,11 @@ namespace GameBoyTests
                 })
                 .WithPreValidation(cpu =>
                 {
-                    Assert.NotEqual(cpu.SP, cpu.memory.ReadWord(immediateAddress));
+                    Assert.NotEqual(cpu.SP, cpu._memory.ReadWord(immediateAddress));
                 })
                 .WithPostValidation(cpu =>
                 {
-                    Assert.Equal(cpu.SP, cpu.memory.ReadWord(immediateAddress));
+                    Assert.Equal(cpu.SP, cpu._memory.ReadWord(immediateAddress));
                 })
                 .WithClockCycles(20);
 
@@ -1083,11 +1083,11 @@ namespace GameBoyTests
                 })
                 .WithPreValidation(cpu =>
                 {
-                    Assert.NotEqual(GetRegister(cpu), cpu.memory.ReadWord(sp));
+                    Assert.NotEqual(GetRegister(cpu), cpu._memory.ReadWord(sp));
                 })
                 .WithPostValidation(cpu =>
                 {
-                    Assert.Equal(GetRegister(cpu), cpu.memory.ReadWord(sp));
+                    Assert.Equal(GetRegister(cpu), cpu._memory.ReadWord(sp));
                     Assert.Equal(sp - 2, cpu.SP);
                 });
 
@@ -1132,11 +1132,11 @@ namespace GameBoyTests
                 })
                 .WithPreValidation(cpu =>
                 {
-                    Assert.NotEqual(GetRegister(cpu), cpu.memory.ReadWord(sp));
+                    Assert.NotEqual(GetRegister(cpu), cpu._memory.ReadWord(sp));
                 })
                 .WithPostValidation(cpu =>
                 {
-                    Assert.Equal(GetRegister(cpu), cpu.memory.ReadWord(sp));
+                    Assert.Equal(GetRegister(cpu), cpu._memory.ReadWord(sp));
                     Assert.Equal(sp + 2, cpu.SP);
                 });
 
@@ -1250,7 +1250,7 @@ namespace GameBoyTests
             Action<Cpu, byte> SetRegister = (cpu, value) =>
             {
                 cpu.HL = 0x1234;
-                cpu.memory.Write(cpu.HL, value);
+                cpu._memory.Write(cpu.HL, value);
             };
             TestAdd(instruction, 0x40, 0x05, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false, cycles: 8);
             TestAdd(instruction, 0x4F, 0x01, SetRegister, setFlagC: false, halfCarry: true, fullCarry: false, cycles: 8);
@@ -1265,7 +1265,7 @@ namespace GameBoyTests
             Action<Cpu, byte> SetRegister = (cpu, value) =>
             {
                 cpu.HL = 0x1234;
-                cpu.memory.Write(cpu.HL, value);
+                cpu._memory.Write(cpu.HL, value);
             };
             TestAdd(instruction, 0x40, 0x05, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false, cycles: 8);
             TestAdd(instruction, 0x4F, 0x01, SetRegister, setFlagC: false, halfCarry: true, fullCarry: false, cycles: 8);
@@ -1426,7 +1426,7 @@ namespace GameBoyTests
             Action<Cpu, byte> SetRegister = (cpu, value) =>
             {
                 cpu.HL = 0x1234;
-                cpu.memory.Write(cpu.HL, value);
+                cpu._memory.Write(cpu.HL, value);
             };
             TestSub(instruction, 0x45, 0x05, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false, cycles: 8);
             TestSub(instruction, 0x45, 0x06, SetRegister, setFlagC: false, halfCarry: true, fullCarry: false, cycles: 8);
@@ -1441,7 +1441,7 @@ namespace GameBoyTests
             Action<Cpu, byte> SetRegister = (cpu, value) =>
             {
                 cpu.HL = 0x1234;
-                cpu.memory.Write(cpu.HL, value);
+                cpu._memory.Write(cpu.HL, value);
             };
             TestSub(instruction, 0x45, 0x05, SetRegister, setFlagC: false, halfCarry: false, fullCarry: false, cycles: 8);
             TestSub(instruction, 0x45, 0x06, SetRegister, setFlagC: false, halfCarry: true, fullCarry: false, cycles: 8);
@@ -1580,7 +1580,7 @@ namespace GameBoyTests
             Action<Cpu, Byte> SetRightOperand = (cpu, value) =>
             {
                 cpu.HL = 0x1234;
-                cpu.memory.Write(cpu.HL, value);
+                cpu._memory.Write(cpu.HL, value);
             };
             TestOperation(instruction, 0x0, 0x0, GetExpectedResult, SetRightOperand, expectedFlagH: true, cycles: 8);
             TestOperation(instruction, 0x0, 0xF, GetExpectedResult, SetRightOperand, expectedFlagH: true, cycles: 8);
@@ -1625,7 +1625,7 @@ namespace GameBoyTests
             Action<Cpu, Byte> SetRightOperand = (cpu, value) =>
             {
                 cpu.HL = 0x1234;
-                cpu.memory.Write(cpu.HL, value);
+                cpu._memory.Write(cpu.HL, value);
             };
             TestOperation(instruction, 0x0, 0x0, GetExpectedResult, SetRightOperand, expectedFlagH: false, cycles: 8);
             TestOperation(instruction, 0x0, 0xF, GetExpectedResult, SetRightOperand, expectedFlagH: false, cycles: 8);
@@ -1670,7 +1670,7 @@ namespace GameBoyTests
             Action<Cpu, Byte> SetRightOperand = (cpu, value) =>
             {
                 cpu.HL = 0x1234;
-                cpu.memory.Write(cpu.HL, value);
+                cpu._memory.Write(cpu.HL, value);
             };
             TestOperation(instruction, 0x0, 0x0, GetExpectedResult, SetRightOperand, expectedFlagH: false, cycles: 8);
             TestOperation(instruction, 0x0, 0xF, GetExpectedResult, SetRightOperand, expectedFlagH: false, cycles: 8);
@@ -1706,7 +1706,7 @@ namespace GameBoyTests
                     SetRightOperand = (cpu, value) =>
                     {
                         cpu.HL = 0x1234;
-                        cpu.memory.Write(cpu.HL, value);
+                        cpu._memory.Write(cpu.HL, value);
                     };
                 }
                 else
@@ -1771,11 +1771,11 @@ namespace GameBoyTests
                     SetOperand = (cpu, value) =>
                     {
                         cpu.HL = address;
-                        cpu.memory.Write(cpu.HL, value);
+                        cpu._memory.Write(cpu.HL, value);
                     };
                     GetResult = (cpu) =>
                     {
-                        return cpu.memory.Read(address);
+                        return cpu._memory.Read(address);
                     };
                 }
                 else
@@ -1822,11 +1822,11 @@ namespace GameBoyTests
                     SetOperand = (cpu, value) =>
                     {
                         cpu.HL = address;
-                        cpu.memory.Write(cpu.HL, value);
+                        cpu._memory.Write(cpu.HL, value);
                     };
                     GetResult = (cpu) =>
                     {
-                        return cpu.memory.Read(address);
+                        return cpu._memory.Read(address);
                     };
                 }
                 else

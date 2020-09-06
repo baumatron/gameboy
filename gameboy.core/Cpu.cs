@@ -33,7 +33,7 @@ namespace GameBoy
             A = 0b111
         }
 
-        internal static int RegisterEncodingToIndex(RegisterEncoding encoding) => ((int)encoding + 1) & 0x7;
+        internal static int RegisterEncodingToIndex(RegisterEncoding encoding) => ((int)encoding + 1) & 0x7; // TODO: No need to add 1, could skip that operation altogether
 
         internal byte A
         {
@@ -183,7 +183,7 @@ namespace GameBoy
         }
 
         // TODO: Could use a closure or a generic here to specify
-        //       the index, and define a function that work son self.F directly instead
+        //       the index, and define a function that works on self.F directly instead
         //       of passing it by reference.
         internal bool flagZ
         {
@@ -234,13 +234,15 @@ namespace GameBoy
         }
 
         // Memory
-        internal Memory memory;
+        internal IMemory _memory;
+
+        internal Cpu(IMemory memory)
+        {
+            _memory = memory;
+        }
 
         internal void Init()
         {
-            // Initialize memory
-            memory = new Memory();
-            memory.Init();
             // Set the program counter to it's initial value
             PC = 0x100;
             // Set initial stack pointer value
@@ -256,7 +258,7 @@ namespace GameBoy
             // method we need to either record that state
             // or reset the instruction table
             // Handy link: http://clrhome.org/table/
-            byte instruction = memory.Read(this.PC);
+            byte instruction = _memory.Read(this.PC);
             ushort cyclesUsed = 4;
 
             switch (instruction)
@@ -267,15 +269,15 @@ namespace GameBoy
                     break;
                 case 0x02:
                     // LD (BC), A
-                    memory.Write(BC, A);
+                    _memory.Write(BC, A);
                     break;
                 case 0x08:
-                    memory.WriteWord(GetImmediateOperandWord(ref cyclesUsed), SP);
+                    _memory.WriteWord(GetImmediateOperandWord(ref cyclesUsed), SP);
                     cyclesUsed += 8;
                     break;
                 case 0x0A:
                     // LD A, (BC)
-                    A = memory.Read(BC);
+                    A = _memory.Read(BC);
                     cyclesUsed += 4;
                     break;
                 case 0x11:
@@ -284,11 +286,11 @@ namespace GameBoy
                     break;
                 case 0x12:
                     // LD (DE), A
-                    memory.Write(DE, A);
+                    _memory.Write(DE, A);
                     break;
                 case 0x1A:
                     // LD A, (DE)
-                    A = memory.Read(DE);
+                    A = _memory.Read(DE);
                     cyclesUsed += 4;
                     break;
                 case 0x21:
@@ -297,12 +299,12 @@ namespace GameBoy
                     break;
                 case 0x22:
                     // LDI (HL), A
-                    memory.Write(HL++, A);
+                    _memory.Write(HL++, A);
                     cyclesUsed += 4;
                     break;
                 case 0x2A:
                     // LDI A, (HL)
-                    A = memory.Read(HL++);
+                    A = _memory.Read(HL++);
                     cyclesUsed += 4;
                     break;
                 case 0x31:
@@ -311,22 +313,22 @@ namespace GameBoy
                     break;
                 case 0x32:
                     // LDD (HL), A
-                    memory.Write(HL--, A);
+                    _memory.Write(HL--, A);
                     cyclesUsed += 4;
                     break;
                 case 0x3A:
                     // LDD A, (HL)
-                    A = memory.Read(HL--);
+                    A = _memory.Read(HL--);
                     cyclesUsed += 4;
                     break;
                 case 0xC1:
                     // POP BC
-                    BC = memory.ReadWord(SP);
+                    BC = _memory.ReadWord(SP);
                     SP += 2;
                     cyclesUsed += 8;
                     break;
                 case 0xC5:
-                    memory.WriteWord(SP, BC);
+                    _memory.WriteWord(SP, BC);
                     SP -= 2;
                     cyclesUsed += 12;
                     break;
@@ -338,12 +340,12 @@ namespace GameBoy
                     break;
                 case 0xD1:
                     // POP DE
-                    DE = memory.ReadWord(SP);
+                    DE = _memory.ReadWord(SP);
                     SP += 2;
                     cyclesUsed += 8;
                     break;
                 case 0xD5:
-                    memory.WriteWord(SP, DE);
+                    _memory.WriteWord(SP, DE);
                     SP -= 2;
                     cyclesUsed += 12;
                     break;
@@ -355,22 +357,22 @@ namespace GameBoy
                     break;
                 case 0xE0:
                     // LDH (0xFF00 + n), A
-                    memory.Write((ushort)(0xFF00 + GetImmediateOperand(ref cyclesUsed)), A);
+                    _memory.Write((ushort)(0xFF00 + GetImmediateOperand(ref cyclesUsed)), A);
                     cyclesUsed += 4;
                     break;
                 case 0xE1:
                     // POP HL
-                    HL = memory.ReadWord(SP);
+                    HL = _memory.ReadWord(SP);
                     SP += 2;
                     cyclesUsed += 8;
                     break;
                 case 0xE2:
                     // LD (0xFF00 + C), A
-                    memory.Write((ushort)(0xFF00 + C), A);
+                    _memory.Write((ushort)(0xFF00 + C), A);
                     cyclesUsed += 4;
                     break;
                 case 0xE5:
-                    memory.WriteWord(SP, HL);
+                    _memory.WriteWord(SP, HL);
                     SP -= 2;
                     cyclesUsed += 12;
                     break;
@@ -381,7 +383,7 @@ namespace GameBoy
                 case 0xEA:
                     // LD (nn), A
                     // Least significant byte first
-                    memory.Write(GetImmediateOperandWord(ref cyclesUsed), A);
+                    _memory.Write(GetImmediateOperandWord(ref cyclesUsed), A);
                     cyclesUsed += 4;
                     break;
                 case 0xEE:
@@ -390,22 +392,22 @@ namespace GameBoy
                     break;
                 case 0xF0:
                     // LDH A, (0xFF00 + n)
-                    A = memory.Read((ushort)(0xFF00 + GetImmediateOperand(ref cyclesUsed)));
+                    A = _memory.Read((ushort)(0xFF00 + GetImmediateOperand(ref cyclesUsed)));
                     cyclesUsed += 4;
                     break;
                 case 0xF1:
                     // POP AF
-                    AF = memory.ReadWord(SP);
+                    AF = _memory.ReadWord(SP);
                     SP += 2;
                     cyclesUsed += 8;
                     break;
                 case 0xF2:
                     // LD A, (0xFF00 + C)
-                    A = memory.Read((ushort)(0xFF00 + C));
+                    A = _memory.Read((ushort)(0xFF00 + C));
                     cyclesUsed += 4;
                     break;
                 case 0xF5:
-                    memory.WriteWord(SP, AF);
+                    _memory.WriteWord(SP, AF);
                     SP -= 2;
                     cyclesUsed += 12;
                     break;
@@ -431,7 +433,7 @@ namespace GameBoy
                 case 0xFA:
                     // LD A, (nn)
                     // Least significant byte first
-                    A = memory.Read(GetImmediateOperandWord(ref cyclesUsed));
+                    A = _memory.Read(GetImmediateOperandWord(ref cyclesUsed));
                     cyclesUsed += 4;
                     break;
                 case 0xFE:
@@ -563,7 +565,7 @@ namespace GameBoy
             byte value;
             if (RegisterEncoding.HLDeref == operand)
             {
-                value = memory.Read(HL);
+                value = _memory.Read(HL);
                 cyclesUsed += 4;
             }
             else
@@ -577,7 +579,7 @@ namespace GameBoy
         {
             if (RegisterEncoding.HLDeref == target)
             {
-                memory.Write(HL, value);
+                _memory.Write(HL, value);
                 cyclesUsed += 4;
             }
             else
@@ -589,13 +591,13 @@ namespace GameBoy
         byte GetImmediateOperand(ref ushort cyclesUsed)
         {
             cyclesUsed += 4;
-            return memory.Read(++PC);;
+            return _memory.Read(++PC);;
         }
 
         ushort GetImmediateOperandWord(ref ushort cyclesUsed)
         {
             cyclesUsed += 8;
-            return (ushort)(memory.Read(++PC) | memory.Read(++PC) << 8);
+            return (ushort)(_memory.Read(++PC) | _memory.Read(++PC) << 8);
         }
 
         void SetCarryFlagsForAdd(int lhs, int rhs, bool useCarry = false)
