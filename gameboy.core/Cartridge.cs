@@ -1,6 +1,6 @@
 namespace GameBoy
 {
-    partial class Cartridge
+    partial class Cartridge: MemoryBase
     {
         public void LoadFromFile(string file)
         {
@@ -12,7 +12,12 @@ namespace GameBoy
             _rom = source;
         }
 
-        public byte Read(ushort address)
+        public override void Write(ushort address, byte value)
+        {
+            // Do nothing. This is ROM
+        }
+
+        public override byte Read(ushort address)
         {
             if (address < 0x4000)
             {

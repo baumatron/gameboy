@@ -1,6 +1,6 @@
 namespace GameBoy
 {
-    class MemoryController: IMemory
+    class MemoryController: MemoryBase
     {
         public MemoryController()
         {
@@ -12,20 +12,13 @@ namespace GameBoy
             _cartridge = cartridge;
         }
 
-        public void Write(ushort address, byte value)
+        public override void Write(ushort address, byte value)
         {
             // TODO: What happens if a write to < 0x8000 happens? As is, nothing will happen since reads go to the cartridge
             _ram.Write(address, value);
         }
 
-        public void WriteWord(ushort address, ushort value)
-        {
-            // TODO: What happens if a write to < 0x8000 happens? As is, nothing will happen since reads go to the cartridge
-            _ram.Write(address, (byte)(value & 0xFF));
-            _ram.Write(address, (byte)(value >> 8));
-        }
-
-        public byte Read(ushort address)
+        public override byte Read(ushort address)
         {
             // If there is a cartridge instance, use that, otherwise just use the memory array.
             // This makes testing the CPU simpler as there is no need to worry about which address you are reading or writing,
@@ -45,11 +38,6 @@ namespace GameBoy
                 }
                 return _ram.Read(address);
             }
-        }
-
-        public ushort ReadWord(ushort address)
-        {
-            return (ushort)(Read(address) | Read((ushort)(address + 1)) << 8);
         }
 
         IMemory _ram = null;
