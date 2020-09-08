@@ -21,6 +21,9 @@ namespace GameBoy
         internal byte[] registers = new byte[7];
         internal byte F;
 
+        internal bool interruptsEnabled = true;
+
+        // Instructions tend to encode register operands as follows
         internal enum RegisterEncoding
         {
             B = 0b000,
@@ -31,6 +34,15 @@ namespace GameBoy
             L = 0b101,
             HLDeref = 0b110,
             A = 0b111
+        }
+
+        // Instructions tend to encode word register operands as follows
+        internal enum WordRegisterEncoding
+        {
+            BC = 0b00,
+            DE = 0b01,
+            HL = 0b10,
+            SP = 0b11
         }
 
         internal static int RegisterEncodingToIndex(RegisterEncoding encoding) => ((int)encoding + 1) & 0x7; // TODO: No need to add 1, could skip that operation altogether
@@ -249,6 +261,10 @@ namespace GameBoy
             SP = 0xFFFE;
         }
 
+        internal void InstructionNotImplemented(byte instruction)
+        {
+            throw new Exception($"Instruction not implemented: 0x{instruction:X2}");
+        }
         internal void ExecuteNextInstruction()
         {
             // Executes the provided instruction.
@@ -260,16 +276,12 @@ namespace GameBoy
             // Handy link: http://clrhome.org/table/
             byte instruction = _memory.Read(this.PC);
             ushort cyclesUsed = 4;
+            bool shouldIncrementPc = true;
 
             switch (instruction)
             {
-                case 0x01:
-                    // LD BC, nn
-                    BC = GetImmediateOperandWord(ref cyclesUsed);
-                    break;
-                case 0x02:
-                    // LD (BC), A
-                    _memory.Write(BC, A);
+                case 0x00:
+                    // NOP
                     break;
                 case 0x08:
                     _memory.WriteWord(GetImmediateOperandWord(ref cyclesUsed), SP);
@@ -280,36 +292,38 @@ namespace GameBoy
                     A = _memory.Read(BC);
                     cyclesUsed += 4;
                     break;
-                case 0x11:
-                    // LD DE, nn
-                    DE = GetImmediateOperandWord(ref cyclesUsed);
-                    break;
-                case 0x12:
-                    // LD (DE), A
-                    _memory.Write(DE, A);
+                case 0x20:
+                    // JR nz, n
+                    // http://z80.info/zip/z80cpu_um.pdf page 287
+                    if (flagZ == false)
+                    {
+                        PC = (ushort)(PC + GetImmediateOperand(ref cyclesUsed));
+                        shouldIncrementPc = false;
+                    }
                     break;
                 case 0x1A:
                     // LD A, (DE)
                     A = _memory.Read(DE);
                     cyclesUsed += 4;
                     break;
-                case 0x21:
-                    // LD HL, nn
-                    HL = GetImmediateOperandWord(ref cyclesUsed);
-                    break;
                 case 0x22:
                     // LDI (HL), A
                     _memory.Write(HL++, A);
                     cyclesUsed += 4;
                     break;
+                case 0x28:
+                    // JR z, n
+                    // http://z80.info/zip/z80cpu_um.pdf page 285
+                    if (flagZ == true)
+                    {
+                        PC = (ushort)(PC + GetImmediateOperand(ref cyclesUsed));
+                        shouldIncrementPc = false;
+                    }
+                    break;
                 case 0x2A:
                     // LDI A, (HL)
                     A = _memory.Read(HL++);
                     cyclesUsed += 4;
-                    break;
-                case 0x31:
-                    // LD SP, nn
-                    SP = GetImmediateOperandWord(ref cyclesUsed);
                     break;
                 case 0x32:
                     // LDD (HL), A
@@ -327,10 +341,24 @@ namespace GameBoy
                     SP += 2;
                     cyclesUsed += 8;
                     break;
+                case 0xC3:
+                    // JP nn
+                    PC = GetImmediateOperandWord(ref cyclesUsed);
+                    shouldIncrementPc = false;
+                    break;
                 case 0xC5:
-                    _memory.WriteWord(SP, BC);
+                    // PUSH BC
                     SP -= 2;
+                    _memory.WriteWord(SP, BC);
                     cyclesUsed += 12;
+                    break;
+                case 0xCD:
+                    // CALL nn
+                    // push PC onto stack then load immediate word to PC
+                    SP += 2;
+                    _memory.WriteWord(SP, PC);
+                    PC = GetImmediateOperandWord(ref cyclesUsed);
+                    shouldIncrementPc = false;
                     break;
                 case 0xC6:
                 case 0xCE:
@@ -345,8 +373,9 @@ namespace GameBoy
                     cyclesUsed += 8;
                     break;
                 case 0xD5:
-                    _memory.WriteWord(SP, DE);
+                    // PUSH DE
                     SP -= 2;
+                    _memory.WriteWord(SP, DE);
                     cyclesUsed += 12;
                     break;
                 case 0xD6:
@@ -372,8 +401,9 @@ namespace GameBoy
                     cyclesUsed += 4;
                     break;
                 case 0xE5:
-                    _memory.WriteWord(SP, HL);
+                    // PUSH HL
                     SP -= 2;
+                    _memory.WriteWord(SP, HL);
                     cyclesUsed += 12;
                     break;
                 case 0xE6:
@@ -406,9 +436,14 @@ namespace GameBoy
                     A = _memory.Read((ushort)(0xFF00 + C));
                     cyclesUsed += 4;
                     break;
+                case 0xF3:
+                    // DI
+                    interruptsEnabled = false;
+                    break;
                 case 0xF5:
-                    _memory.WriteWord(SP, AF);
+                    // PUSH AF
                     SP -= 2;
+                    _memory.WriteWord(SP, AF);
                     cyclesUsed += 12;
                     break;
                 case 0xF6:
@@ -436,39 +471,111 @@ namespace GameBoy
                     A = _memory.Read(GetImmediateOperandWord(ref cyclesUsed));
                     cyclesUsed += 4;
                     break;
+                case 0xFB:
+                    // EI
+                    interruptsEnabled = true;
+                    break;
                 case 0xFE:
                     // CP A, n
                     Compare(A, GetImmediateOperand(ref cyclesUsed));
                     break;
-
                 default:
                     byte instructionHighNibble = (byte)(instruction >> 4);
+                    byte instructionLowNibble = (byte)(instruction & 0xF);
                     switch (instructionHighNibble)
                     {
                         case 0x0:
                         case 0x1:
                         case 0x2:
                         case 0x3:
-                            if ((instruction & 0x7) == 0x4)
+                            switch (instructionLowNibble) 
                             {
-                                // INC *
-                                var target = (RegisterEncoding)((instruction >> 3) & 0x7);
-                                var result = Add(GetHighOperand(instruction, ref cyclesUsed), 1, false);
-                                WriteToTarget(target, result, ref cyclesUsed);
-                            }
-                            else if ((instruction & 0x7) == 0x5)
-                            {
-                                // DEC *
-                                var target = (RegisterEncoding)((instruction >> 3) & 0x7);
-                                var result = Sub(GetHighOperand(instruction, ref cyclesUsed), 1, false);
-                                WriteToTarget(target, result, ref cyclesUsed);
-                            }
-                            else
-                            {
-                                goto default;
+                                case 0x01:
+                                    {
+                                        // LD RR, nn
+                                        var target = (WordRegisterEncoding)(instructionHighNibble & 0x3);
+                                        WriteToTargetWordRegister(target, GetImmediateOperandWord(ref cyclesUsed));
+                                    }
+                                    break;
+                                case 0x02:
+                                    {
+                                        // 0x02
+                                        // 0x12
+                                        // LD (register), A
+                                        if (instructionHighNibble <= 0x1)
+                                        {
+                                            var target = (WordRegisterEncoding)(instructionHighNibble & 0x3);
+                                            _memory.WriteWord(ReadWordRegisterValue(target), A);
+                                            cyclesUsed += 4;
+                                        }
+                                        else
+                                        {
+                                            InstructionNotImplemented(instruction);
+                                        }
+                                    }
+                                    break;
+                                case 0x3:
+                                    {
+                                        // 0x03
+                                        // 0x13
+                                        // 0x23
+                                        // 0x33
+                                        // INC nn (register word)
+                                        var target = (WordRegisterEncoding)(instructionHighNibble & 0x3);
+                                        WriteToTargetWordRegister(target, (ushort)(ReadWordRegisterValue(target) + 1));
+                                        cyclesUsed += 4;
+                                    }
+                                    break;
+                                case 0xB:
+                                    {
+                                        // 0x0B
+                                        // 0x1B
+                                        // 0x2B
+                                        // 0x3B
+                                        // DEC nn (register word)
+                                        var target = (WordRegisterEncoding)(instructionHighNibble & 0x3);
+                                        WriteToTargetWordRegister(target, (ushort)(ReadWordRegisterValue(target) - 1));
+                                        cyclesUsed += 4;
+                                    }
+                                    break;
+                                case 0x4:
+                                case 0xC:
+                                    {
+                                        // INC *
+                                        var target = DecodeHighOperand(instruction);
+                                        // TODO: Supposedly the INC instruction doesn't affect the C flag, but Add does?
+                                        var result = Add(GetOperandValue(target, ref cyclesUsed), 1, false);
+                                        WriteToTargetRegister(target, result, ref cyclesUsed);
+                                    }
+                                    break;
+                                case 0x5:
+                                case 0xD:
+                                    {
+                                        // DEC *
+                                        var target = DecodeHighOperand(instruction);
+                                        // TODO: Supposedly the DEC instruction doesn't affect the C flag, but Sub does?
+                                        var result = Sub(GetHighOperandValue(instruction, ref cyclesUsed), 1, false);
+                                        WriteToTargetRegister(target, result, ref cyclesUsed);
+                                    }
+                                    break;
+
+                                case 0x6:
+                                case 0xE:
+                                    if (instructionHighNibble <= 0x3) // LD immediate
+                                    {
+                                        var target = (RegisterEncoding)((instruction >> 3) & 0x7);
+                                        WriteToTargetRegister(target, GetImmediateOperand(ref cyclesUsed), ref cyclesUsed);
+                                    }
+                                    else
+                                    {
+                                        goto default;
+                                    }
+                                    break;
+                                default:
+                                    InstructionNotImplemented(instruction);
+                                    break;
                             }
                             break;
-
                         case 0x4:
                         case 0x5:
                         case 0x6:
@@ -476,7 +583,7 @@ namespace GameBoy
                             // LD *, *
                             {
                                 var target = (RegisterEncoding)((instruction >> 3) & 0x7);
-                                WriteToTarget(target, GetLowOperand(instruction, ref cyclesUsed), ref cyclesUsed);
+                                WriteToTargetRegister(target, GetLowOperand(instruction, ref cyclesUsed), ref cyclesUsed);
                             }
                             break;
 
@@ -517,26 +624,7 @@ namespace GameBoy
                             break;
 
                         default:
-
-                            byte instructionLowNibble = (byte)(instruction & 0xF);
-                            switch (instructionLowNibble)
-                            {
-                                case 0x6:
-                                case 0xE:
-                                    if (instructionHighNibble <= 0x3) // LD immediate
-                                    {
-                                        var target = (RegisterEncoding)((instruction >> 3) & 0x7);
-                                        WriteToTarget(target, GetImmediateOperand(ref cyclesUsed), ref cyclesUsed);
-                                    }
-                                    else
-                                    {
-                                        goto default;
-                                    }
-                                    break;
-
-                                default:
-                                    throw new Exception($"Instruction not implemented: 0x{instruction:X2}");
-                            }
+                            InstructionNotImplemented(instruction);
                             break;
                     }
 
@@ -544,20 +632,40 @@ namespace GameBoy
             }
 
             // Increment the program counter
-            PC++;
+            if (shouldIncrementPc)
+            {
+                PC++;
+            }
 
             // Increment the clock by the number of cycles used
             clock += cyclesUsed;
         }
 
-        byte GetLowOperand(byte instruction, ref ushort cyclesUsed)
+        RegisterEncoding DecodeHighOperand(byte instruction)
         {
-            return GetOperandValue((RegisterEncoding)((instruction) & 0x7), ref cyclesUsed);
+            // Gets encoding for "high" operand, which may be a register or (HL) (dereferenced value at HL)
+            // instruction: xx yyy zzz
+            // Where yyy is the high operand, defined by RegisterEncoding
+            return (RegisterEncoding)((instruction >> 3) & 0x7);
         }
 
-        byte GetHighOperand(byte instruction, ref ushort cyclesUsed)
+        RegisterEncoding DecodeLowOperand(byte instruction)
         {
-            return GetOperandValue((RegisterEncoding)((instruction >> 3) & 0x7), ref cyclesUsed);
+            // Gets encoding for the "low" operand, which may be a register or (HL) (dereferenced value at HL)
+            // instruction: xx yyy zzz
+            // Where zzz is the low operand, defined by RegisterEncoding
+            return (RegisterEncoding)((instruction) & 0x7);
+        }
+
+        byte GetLowOperand(byte instruction, ref ushort cyclesUsed)
+        {
+            return GetOperandValue(DecodeLowOperand(instruction), ref cyclesUsed);
+        }
+
+        byte GetHighOperandValue(byte instruction, ref ushort cyclesUsed)
+        {
+
+            return GetOperandValue(DecodeHighOperand(instruction), ref cyclesUsed);
         }
 
         byte GetOperandValue(RegisterEncoding operand, ref ushort cyclesUsed)
@@ -575,7 +683,7 @@ namespace GameBoy
             return value;
         }
 
-        void WriteToTarget(RegisterEncoding target, byte value, ref ushort cyclesUsed)
+        void WriteToTargetRegister(RegisterEncoding target, byte value, ref ushort cyclesUsed)
         {
             if (RegisterEncoding.HLDeref == target)
             {
@@ -586,6 +694,54 @@ namespace GameBoy
             {
                 registers[RegisterEncodingToIndex(target)] = value;
             }
+        }
+
+        internal void WriteToTargetWordRegister(WordRegisterEncoding target, ushort value)
+        {
+            // TODO: Could probably change the layout of the registers so that the target binary value could be used as an index
+            // to then write to the register array, ensuring endian-ness is correct
+            switch (target)
+            {
+                case WordRegisterEncoding.BC:
+                    BC = value;
+                    break;
+                case WordRegisterEncoding.DE:
+                    DE = value;
+                    break;
+                case WordRegisterEncoding.HL:
+                    HL = value;
+                    break;
+                case WordRegisterEncoding.SP:
+                    SP = value;
+                    break;
+                default:
+                    throw new Exception("Invalid target register");
+            }
+        }
+
+        internal ushort ReadWordRegisterValue(WordRegisterEncoding register)
+        {
+            // TODO: Could probably change the layout of the registers so that the target binary value could be used as an index
+            // to then write to the register array, ensuring endian-ness is correct
+            ushort value;
+            switch (register)
+            {
+                case WordRegisterEncoding.BC:
+                    value = BC;
+                    break;
+                case WordRegisterEncoding.DE:
+                    value = DE;
+                    break;
+                case WordRegisterEncoding.HL:
+                    value = HL;
+                    break;
+                case WordRegisterEncoding.SP:
+                    value = SP;
+                    break;
+                default:
+                    throw new Exception("Invalid register");
+            }
+            return value;
         }
 
         byte GetImmediateOperand(ref ushort cyclesUsed)

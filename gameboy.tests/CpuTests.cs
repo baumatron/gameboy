@@ -486,6 +486,9 @@ namespace GameBoyTests
             cpu._memory.Write(pc++, (byte)(baseOpCode + 0x05));
             testTasks.Add(() => TestLDToHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.L)]));
 
+            cpu._memory.Write(pc++, (byte)(baseOpCode + 0x07));
+            testTasks.Add(() => TestLDToHLAddress(cpu, ref cpu.registers[Cpu.RegisterEncodingToIndex(Cpu.RegisterEncoding.A)]));
+
             foreach (var task in testTasks)
             {
                 task();
@@ -1087,7 +1090,9 @@ namespace GameBoyTests
                 })
                 .WithPostValidation(cpu =>
                 {
-                    Assert.Equal(GetRegister(cpu), cpu._memory.ReadWord(sp));
+                    // Need to validate the register against the memory that SP points to,
+                    // since after the push the stack points to the word that was just written
+                    Assert.Equal(GetRegister(cpu), cpu._memory.ReadWord(cpu.SP));
                     Assert.Equal(sp - 2, cpu.SP);
                 });
 
@@ -1136,6 +1141,9 @@ namespace GameBoyTests
                 })
                 .WithPostValidation(cpu =>
                 {
+                    // Need to validate against the memory that was at SP before the 
+                    // instruction ran (or current SP + 2), since SP was updated to discard
+                    // that value off the stack
                     Assert.Equal(GetRegister(cpu), cpu._memory.ReadWord(sp));
                     Assert.Equal(sp + 2, cpu.SP);
                 });
@@ -1787,7 +1795,7 @@ namespace GameBoyTests
                 Func<byte, byte, byte> GetExpectedResult = (byte lhs, byte rhs) => (byte)((lhs + 1) & 0xFF);
 
                 TestOperation(instruction, 0x00, 0x00, GetExpectedResult, SetOperand, GetResult, expectedFlagH: false, expectedFlagC: false, expectedFlagZ: false, cycles: cycles);
-                TestOperation(instruction, 0xFF, 0xFF, GetExpectedResult, SetOperand, GetResult, expectedFlagH: true, expectedFlagC: true, expectedFlagZ: true, cycles: cycles);
+                TestOperation(instruction, 0xFF, 0xFF, GetExpectedResult, SetOperand, GetResult, expectedFlagH: true, expectedFlagC: true, expectedFlagZ: true, cycles: cycles); // TODO: Some documentation says that C isn't affected by this instruction
                 TestOperation(instruction, 0xEF, 0xEF, GetExpectedResult, SetOperand, GetResult, expectedFlagH: true, expectedFlagC: false, expectedFlagZ: false, cycles: cycles);
                 TestOperation(instruction, 0xF0, 0xF0, GetExpectedResult, SetOperand, GetResult, expectedFlagH: false, expectedFlagC: false, expectedFlagZ: false, cycles: cycles);
             }
@@ -1843,5 +1851,151 @@ namespace GameBoyTests
                 TestOperation(instruction, 0xF0, 0xF0, GetExpectedResult, SetOperand, GetResult, expectedFlagH: true, expectedFlagC: false, expectedFlagZ: false, expectedFlagN: true, cycles: cycles);
             }
         }
+
+
+        [Fact]
+        public void TestIncWord()
+        {
+            List<byte> testInstructions = new List<byte>
+            {
+                0x03,
+                0x13,
+                0x23,
+                0x33
+            };
+
+            Dictionary<byte, Cpu.WordRegisterEncoding> instructionToRegisterMap = new Dictionary<byte, Cpu.WordRegisterEncoding>
+            {
+                [0x03] = Cpu.WordRegisterEncoding.BC,
+                [0x13] = Cpu.WordRegisterEncoding.DE,
+                [0x23] = Cpu.WordRegisterEncoding.HL,
+                [0x33] = Cpu.WordRegisterEncoding.SP
+            };
+
+            foreach (var instruction in testInstructions)
+            {
+                Cpu.WordRegisterEncoding register = instructionToRegisterMap[instruction];
+                ushort initialValue = 0x11;
+
+                var test = new InstructionTest(instruction)
+                    .WithClockCycles(8)
+                    .WithTestPreparation(cpu =>
+                    {
+                        cpu.WriteToTargetWordRegister(register, initialValue);
+                    })
+                    .WithPostValidation(cpu =>
+                    {
+                        Assert.Equal(initialValue + 1, cpu.ReadWordRegisterValue(register));
+                        // TODO: Would be nice to ensure flags aren't affected (if documentation is correct)
+                    });
+
+                var runner = new InstructionTestRunner(test);
+                runner.Run();
+            }
+        }
+
+        // TODO: This is very similar to above... should share code
+        [Fact]
+        public void TestDecWord()
+        {
+            List<byte> testInstructions = new List<byte>
+            {
+                0x0B,
+                0x1B,
+                0x2B,
+                0x3B
+            };
+
+            Dictionary<byte, Cpu.WordRegisterEncoding> instructionToRegisterMap = new Dictionary<byte, Cpu.WordRegisterEncoding>
+            {
+                [0x0B] = Cpu.WordRegisterEncoding.BC,
+                [0x1B] = Cpu.WordRegisterEncoding.DE,
+                [0x2B] = Cpu.WordRegisterEncoding.HL,
+                [0x3B] = Cpu.WordRegisterEncoding.SP
+            };
+
+            foreach (var instruction in testInstructions)
+            {
+                Cpu.WordRegisterEncoding register = instructionToRegisterMap[instruction];
+                ushort initialValue = 0x11;
+
+                var test = new InstructionTest(instruction)
+                    .WithClockCycles(8)
+                    .WithTestPreparation(cpu =>
+                    {
+                        cpu.WriteToTargetWordRegister(register, initialValue);
+                    })
+                    .WithPostValidation(cpu =>
+                    {
+                        Assert.Equal(initialValue - 1, cpu.ReadWordRegisterValue(register));
+                        // TODO: Would be nice to ensure flags aren't affected (if documentation is correct)
+                    });
+
+                var runner = new InstructionTestRunner(test);
+                runner.Run();
+            }
+        }
+
+        [Fact]
+        public void TestLdHLInc()
+        {
+            ushort initialHLValue = 0x1234;
+            byte initialMemoryValue = 0x05;
+            byte finalMemoryValue = 0x20;
+            var test = new InstructionTest(0x22)
+                .WithClockCycles(8)
+                .WithTestPreparation(cpu =>
+                {
+                    cpu.WriteToTargetWordRegister(Cpu.WordRegisterEncoding.HL, initialHLValue);
+                    cpu._memory.Write(initialHLValue, initialMemoryValue);
+                    cpu.A = finalMemoryValue;
+                })
+                .WithPostValidation(cpu =>
+                {
+                    Assert.Equal(initialHLValue + 1, cpu.ReadWordRegisterValue(Cpu.WordRegisterEncoding.HL));
+                    Assert.Equal(finalMemoryValue, cpu._memory.Read(initialHLValue));
+                    Assert.Equal(initialHLValue + 1, cpu.HL);
+                    // TODO: Would be nice to ensure flags aren't affected (if documentation is correct)
+                });
+
+            var runner = new InstructionTestRunner(test);
+            runner.Run();
+        }
+
+        [Fact]
+        public void TestLdHLDec()
+        {
+            ushort initialHLValue = 0x1234;
+            byte initialMemoryValue = 0x05;
+            byte finalMemoryValue = 0x20;
+            var test = new InstructionTest(0x32)
+                .WithClockCycles(8)
+                .WithTestPreparation(cpu =>
+                {
+                    cpu.WriteToTargetWordRegister(Cpu.WordRegisterEncoding.HL, initialHLValue);
+                    cpu._memory.Write(initialHLValue, initialMemoryValue);
+                    cpu.A = finalMemoryValue;
+                })
+                .WithPostValidation(cpu =>
+                {
+                    Assert.Equal(initialHLValue - 1, cpu.ReadWordRegisterValue(Cpu.WordRegisterEncoding.HL));
+                    Assert.Equal(finalMemoryValue, cpu._memory.Read(initialHLValue));
+                    Assert.Equal(initialHLValue - 1, cpu.HL);
+                    // TODO: Would be nice to ensure flags aren't affected (if documentation is correct)
+                });
+
+            var runner = new InstructionTestRunner(test);
+            runner.Run();
+        }
+
+        // Test debt
+        // NOP (0x00)
+        // LD, nn (0xC3)
+        // DI (0xF3)
+        // EI (0xFB)
+        // JR NZ, n (0x20)
+        // JR Z, n (0x28)
+        // CALL nn (0xCD)
+        // INC register word (0x0-3 3) 0x03, 0x13, 0x23, 0x33 - this is implemented but maybe needs tests for flags
     }
 }
