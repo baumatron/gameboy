@@ -68,6 +68,12 @@ namespace GameBoyTests
             return this;
         }
 
+        public InstructionTest WithPostExecutionPC(ushort pcAddress)
+        {
+            _testPc = pcAddress;
+            return this;
+        }
+
         public InstructionTest WithClockCycles(int expectedClockCycles)
         {
             _expectedClockCycles = expectedClockCycles;

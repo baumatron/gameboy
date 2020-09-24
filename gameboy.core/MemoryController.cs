@@ -14,7 +14,21 @@ namespace GameBoy
 
         public override void Write(ushort address, byte value)
         {
+            switch (address)
+            {
+                case 0xFF44:
+                    // Writes to LY register reset the counter
+                    value = 0;
+                    break;
+                default:
+                    break;
+            }
             // TODO: What happens if a write to < 0x8000 happens? As is, nothing will happen since reads go to the cartridge
+            WriteDirect(address, value);
+        }
+
+        public override void WriteDirect(ushort address, byte value)
+        {
             _ram.Write(address, value);
         }
 

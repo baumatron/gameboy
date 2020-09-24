@@ -6,7 +6,7 @@ namespace GameBoy
     {
         internal int clock;
         // Registers
-        internal ushort SP, PC;
+        public ushort SP, PC;
 
         // LD instructions (and others?) specify registers according to this encoding:
         //  111 - A
@@ -132,7 +132,7 @@ namespace GameBoy
         }
 
         // Combined registers
-        internal ushort AF
+        public ushort AF
         {
             get
             {
@@ -145,7 +145,7 @@ namespace GameBoy
             }
         }
 
-        internal ushort BC
+        public ushort BC
         {
             get
             {
@@ -157,7 +157,7 @@ namespace GameBoy
                 C = (byte)(value & 0xFF);
             }
         }
-        internal ushort DE
+        public ushort DE
         {
             get
             {
@@ -170,7 +170,7 @@ namespace GameBoy
             }
         }
 
-        internal ushort HL
+        public ushort HL
         {
             get
             {
@@ -197,7 +197,7 @@ namespace GameBoy
         // TODO: Could use a closure or a generic here to specify
         //       the index, and define a function that works on self.F directly instead
         //       of passing it by reference.
-        internal bool flagZ
+        public bool flagZ
         {
             get
             {
@@ -209,7 +209,7 @@ namespace GameBoy
             }
         }
 
-        internal bool flagN
+        public bool flagN
         {
             get
             {
@@ -221,7 +221,7 @@ namespace GameBoy
             }
         }
 
-        internal bool flagH
+        public bool flagH
         {
             get
             {
@@ -233,7 +233,7 @@ namespace GameBoy
             }
         }
 
-        internal bool flagC
+        public bool flagC
         {
             get
             {
@@ -246,7 +246,7 @@ namespace GameBoy
         }
 
         // Memory
-        internal IMemory _memory;
+        public IMemory _memory;
 
         internal Cpu(IMemory memory)
         {
@@ -259,6 +259,9 @@ namespace GameBoy
             PC = 0x100;
             // Set initial stack pointer value
             SP = 0xFFFE;
+
+            // LCDC init
+            _memory.Write(0xFF40, 0x91);
         }
 
         internal void InstructionNotImplemented(byte instruction)
@@ -275,8 +278,11 @@ namespace GameBoy
             // or reset the instruction table
             // Handy link: http://clrhome.org/table/
             byte instruction = _memory.Read(this.PC);
+            // It might be better to just map instructions to consumed clock cycles. Less error prone.
             ushort cyclesUsed = 4;
             bool shouldIncrementPc = true;
+
+            // Console.WriteLine($"{PC:X4} {instruction:X2}");
 
             switch (instruction)
             {
@@ -292,33 +298,35 @@ namespace GameBoy
                     A = _memory.Read(BC);
                     cyclesUsed += 4;
                     break;
-                case 0x20:
-                    // JR nz, n
-                    // http://z80.info/zip/z80cpu_um.pdf page 287
-                    if (flagZ == false)
-                    {
-                        PC = (ushort)(PC + GetImmediateOperand(ref cyclesUsed));
-                        shouldIncrementPc = false;
-                    }
+                case 0x18:
+                    // JR n
+                    JumpRelativeImmediate(ref cyclesUsed);
                     break;
                 case 0x1A:
                     // LD A, (DE)
                     A = _memory.Read(DE);
                     cyclesUsed += 4;
                     break;
+                case 0x20:
+                    // JR NZ, n
+                    JumpRelativeImmediateConditional(!flagZ, ref cyclesUsed);
+                    break;
+                case 0x28:
+                    // JR Z, n
+                    JumpRelativeImmediateConditional(flagZ, ref cyclesUsed);
+                    break;
+                case 0x30:
+                    // JR NC, n
+                    JumpRelativeImmediateConditional(!flagC, ref cyclesUsed);
+                    break;
+                case 0x38:
+                    // JR C, n
+                    JumpRelativeImmediateConditional(flagC, ref cyclesUsed);
+                    break;
                 case 0x22:
                     // LDI (HL), A
                     _memory.Write(HL++, A);
                     cyclesUsed += 4;
-                    break;
-                case 0x28:
-                    // JR z, n
-                    // http://z80.info/zip/z80cpu_um.pdf page 285
-                    if (flagZ == true)
-                    {
-                        PC = (ushort)(PC + GetImmediateOperand(ref cyclesUsed));
-                        shouldIncrementPc = false;
-                    }
                     break;
                 case 0x2A:
                     // LDI A, (HL)
@@ -365,6 +373,21 @@ namespace GameBoy
                     // ADD A, n
                     // ADC A, n
                     A = Add(A, GetImmediateOperand(ref cyclesUsed), useCarry: (instruction & 0x80) > 0);
+                    break;
+                case 0xC9:
+                    Return(ref cyclesUsed, ref shouldIncrementPc);
+                    break;
+                case 0xC0:
+                    ReturnConditional(!flagZ, ref cyclesUsed, ref shouldIncrementPc);
+                    break;
+                case 0xD0:
+                    ReturnConditional(!flagC, ref cyclesUsed, ref shouldIncrementPc);
+                    break;
+                case 0xC8:
+                    ReturnConditional(flagZ, ref cyclesUsed, ref shouldIncrementPc);
+                    break;
+                case 0xD8:
+                    ReturnConditional(flagC, ref cyclesUsed, ref shouldIncrementPc);
                     break;
                 case 0xD1:
                     // POP DE
@@ -623,6 +646,34 @@ namespace GameBoy
                             }
                             break;
 
+                        case 0xC:
+                        case 0xD:
+                        case 0xE:
+                        case 0xF:
+                            if (instructionLowNibble == 0xF ||
+                                instructionLowNibble == 0x7)
+                            {
+                                // RST nn
+                                // push PC onto stack then jump to predetermined address depending on instruction
+                                SP -= 2;
+                                _memory.WriteWord(SP, PC);
+                                // Bits 3-5 map directly to the target address.
+                                // 0b00111000 = 0x38
+                                // instruction -> address
+                                // 0xC7 -> 0x00
+                                // 0xF7 -> 0x30
+                                // 0xCF -> 0x08
+                                // 0xFF -> 0x38
+                                PC = (ushort)(instruction & 0x38);
+                                shouldIncrementPc = false;
+                                cyclesUsed += 12;
+                            }
+                            else
+                            {
+                                goto default;
+                            }
+                            break;
+
                         default:
                             InstructionNotImplemented(instruction);
                             break;
@@ -635,6 +686,10 @@ namespace GameBoy
             if (shouldIncrementPc)
             {
                 PC++;
+                if (PC == 0x000)
+                {
+                    throw new Exception("PC wrapped around");
+                }
             }
 
             // Increment the clock by the number of cycles used
@@ -750,6 +805,23 @@ namespace GameBoy
             return _memory.Read(++PC);;
         }
 
+        sbyte GetImmediateSignedOperand(ref ushort cyclesUsed)
+        {
+            sbyte signedValue = 0;
+            byte value = GetImmediateOperand(ref cyclesUsed);
+            if (value >> 7 == 1)
+            {
+                // sign bit is set, manually do conversion to signed byte
+                signedValue = (sbyte)(0x100 - value);
+                signedValue *= -1;
+            }
+            else
+            {
+                signedValue = (sbyte)value;
+            }
+            return signedValue;
+        }
+
         ushort GetImmediateOperandWord(ref ushort cyclesUsed)
         {
             cyclesUsed += 8;
@@ -825,6 +897,44 @@ namespace GameBoy
             SetCarryFlagsForSub(lhs, rhs);
             flagN = true;
             flagZ = rhs == lhs;
+        }
+
+        void JumpRelativeImmediate(ref ushort cyclesUsed)
+        {
+            var offset = GetImmediateSignedOperand(ref cyclesUsed);
+            PC = (ushort)(PC + offset);
+            cyclesUsed = 12;
+        }
+
+        void JumpRelativeImmediateConditional(bool condition, ref ushort cyclesUsed)
+        {
+            if (condition)
+            {
+                JumpRelativeImmediate(ref cyclesUsed);
+            }
+            else
+            {
+                PC++; // Skip over the immediate value
+                cyclesUsed = 8;
+            }
+        }
+
+        void Return(ref ushort cyclesUsed, ref bool shouldIncrementPc)
+        {
+            PC = _memory.ReadWord(SP);
+            SP += 2;
+            cyclesUsed += 12;
+            shouldIncrementPc = false;
+        }
+
+        void ReturnConditional(bool condition, ref ushort cyclesUsed, ref bool shouldIncrementPc)
+        {
+            cyclesUsed += 4;
+
+            if (condition)
+            {
+                Return(ref cyclesUsed, ref shouldIncrementPc);
+            }
         }
     }
 }

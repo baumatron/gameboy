@@ -30,7 +30,8 @@ namespace GameBoyTests
             // Need to figure out halt...
             bool done = false;
 
-            while (!done)
+            int iterations = 0;
+            while (!done && iterations++ < 10000)
             {
                 cpu.ExecuteNextInstruction();
             } 

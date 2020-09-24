@@ -17,6 +17,11 @@ namespace GameBoy
             // Do nothing. This is ROM
         }
 
+        public override void WriteDirect(ushort address, byte value)
+        {
+            // Do nothing. This is ROM
+        }
+
         public override byte Read(ushort address)
         {
             if (address < 0x4000)

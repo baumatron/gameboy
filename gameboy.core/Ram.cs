@@ -4,9 +4,14 @@ namespace GameBoy
     {
         public Ram()
         {
-            _ram = new byte[0xFFFF];
+            _ram = new byte[0x10000];
         }
         public override void Write(ushort address, byte value)
+        {
+            WriteDirect(address, value);
+        }
+
+        public override void WriteDirect(ushort address, byte value)
         {
             _ram[address] = value;
         }

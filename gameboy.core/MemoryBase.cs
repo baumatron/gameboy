@@ -20,5 +20,7 @@ namespace GameBoy
             // more significant byte at address + 1
             return (ushort)(Read(address) | Read((ushort)(address + 1)) << 8);
         }
+
+        public abstract void WriteDirect(ushort address, byte value);
     }
 }

@@ -1988,6 +1988,181 @@ namespace GameBoyTests
             runner.Run();
         }
 
+        [Fact]
+        public void TestRST()
+        {
+            var instructions = new List<byte>
+            {
+                0xC7,
+                0xD7,
+                0xE7,
+                0xF7,
+                0xCF,
+                0xDF,
+                0xEF,
+                0xFF
+            };
+
+            var instructionToAddressMap = new Dictionary<byte, ushort>
+            {
+                [0xC7] = 0x00,
+                [0xD7] = 0x10,
+                [0xE7] = 0x20,
+                [0xF7] = 0x30,
+                [0xCF] = 0x08,
+                [0xDF] = 0x18,
+                [0xEF] = 0x28,
+                [0xFF] = 0x38,
+            };
+
+            ushort initialPC = 0x100;
+            ushort initialSP = 0xFFFE;
+
+            foreach (var instruction in instructions)
+            {
+                var test = new InstructionTest(instruction)
+                    .WithClockCycles(16)
+                    .WithTestPreparation(cpu =>
+                    {
+                        cpu.PC = initialPC;
+                        cpu.SP = initialSP;
+                    })
+                    .WithPostExecutionPC(instructionToAddressMap[instruction])
+                    .WithPostValidation(cpu =>
+                    {
+                        Assert.Equal(initialSP - 2, cpu.SP);
+                        Assert.Equal(initialPC, cpu._memory.ReadWord(cpu.SP));
+                    });
+
+                var runner = new InstructionTestRunner(test);
+                runner.Run();
+            }
+        }
+
+        [Fact]
+        public void TestJumpRelative()
+        {
+            ushort initialPC = 0x100;
+
+            // Array of instruction, if jump should be performed, and function to set the flag
+            var configs = new List<Tuple<byte, bool, sbyte, Action<Cpu>>>
+            {
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x18, true, 10, (Cpu cpu) => {} ),
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x18, true, -10, (Cpu cpu) => {} ),
+
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x20, true, 10, (Cpu cpu) => cpu.flagZ = false),
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x20, false, 10, (Cpu cpu) => cpu.flagZ = true),
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x20, true, -10, (Cpu cpu) => cpu.flagZ = false),
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x20, false, -10, (Cpu cpu) => cpu.flagZ = true),
+
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x30, true, 10, (Cpu cpu) => cpu.flagC = false),
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x30, false, 10, (Cpu cpu) => cpu.flagC = true),
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x30, true, -10, (Cpu cpu) => cpu.flagC = false),
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x30, false, -10, (Cpu cpu) => cpu.flagC = true),
+
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x28, true, 10, (Cpu cpu) => cpu.flagZ = true),
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x28, false, 10, (Cpu cpu) => cpu.flagZ = false),
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x28, true, -10, (Cpu cpu) => cpu.flagZ = true),
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x28, false, -10, (Cpu cpu) => cpu.flagZ = false),
+
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x38, true, 10, (Cpu cpu) => cpu.flagC = true),
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x38, false, 10, (Cpu cpu) => cpu.flagC = false),
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x38, true, -10, (Cpu cpu) => cpu.flagC = true),
+                new Tuple<byte, bool, sbyte, Action<Cpu>>(0x38, false, -10, (Cpu cpu) => cpu.flagC = false),
+            };
+
+            foreach (var config in configs)
+            {
+                var instruction = config.Item1;
+                var shouldPerformJump = config.Item2;
+                var offset = config.Item3;
+                var setFlag = config.Item4;
+
+                var test = new InstructionTest(instruction)
+                    .WithClockCycles(shouldPerformJump ? 12 : 8)
+                    .WithTestPreparation(cpu =>
+                    {
+                        cpu.PC = initialPC;
+                        setFlag(cpu);
+                    })
+                    .WithImmediateByte(unchecked((byte)offset));
+
+                if (shouldPerformJump)
+                {
+                    test = test.WithPostExecutionPC((ushort)(initialPC + offset + 2));
+                }
+
+                var runner = new InstructionTestRunner(test);
+                runner.Run();
+            }
+        }
+
+        [Fact]
+        public void TestReturnConditional()
+        {
+            ushort initialPC = 0x100;
+
+            // Array of instruction, if jump should be performed, and function to set the flag
+            var configs = new List<Tuple<byte, bool, Action<Cpu>>>
+            {
+                new Tuple<byte, bool, Action<Cpu>>(0xC0, true, (Cpu cpu) => cpu.flagZ = false ),
+                new Tuple<byte, bool, Action<Cpu>>(0xC0, false, (Cpu cpu) => cpu.flagZ = true ),
+
+                new Tuple<byte, bool, Action<Cpu>>(0xD0, true, (Cpu cpu) => cpu.flagC = false ),
+                new Tuple<byte, bool, Action<Cpu>>(0xD0, false, (Cpu cpu) => cpu.flagC = true ),
+
+                new Tuple<byte, bool, Action<Cpu>>(0xC8, false, (Cpu cpu) => cpu.flagZ = false ),
+                new Tuple<byte, bool, Action<Cpu>>(0xC8, true, (Cpu cpu) => cpu.flagZ = true ),
+
+                new Tuple<byte, bool, Action<Cpu>>(0xD8, false, (Cpu cpu) => cpu.flagC = false ),
+                new Tuple<byte, bool, Action<Cpu>>(0xD8, true, (Cpu cpu) => cpu.flagC = true )
+            };
+
+            foreach (var config in configs)
+            {
+                var instruction = config.Item1;
+                var shouldPerformJump = config.Item2;
+                var setFlag = config.Item3;
+
+                ushort returnAddress = 0x0150;
+
+                var test = new InstructionTest(instruction)
+                    .WithClockCycles(shouldPerformJump ? 20 : 8)
+                    .WithTestPreparation(cpu =>
+                    {
+                        cpu.PC = initialPC;
+                        cpu.SP -= 2;
+                        cpu._memory.WriteWord(cpu.SP, returnAddress);
+                        setFlag(cpu);
+                    });
+
+                if (shouldPerformJump)
+                {
+                    test = test.WithPostExecutionPC(returnAddress);
+                }
+
+                var runner = new InstructionTestRunner(test);
+                runner.Run();
+            }
+        }
+
+        [Fact]
+        public void TestReturn()
+        {
+            ushort returnAddress = 0x0150;
+
+            var test = new InstructionTest(0xC9)
+                .WithClockCycles(16)
+                .WithTestPreparation(cpu =>
+                {
+                    cpu.SP -= 2;
+                    cpu._memory.WriteWord(cpu.SP, returnAddress);
+                })
+                .WithPostExecutionPC(returnAddress);
+
+            var runner = new InstructionTestRunner(test);
+            runner.Run();
+        }
         // Test debt
         // NOP (0x00)
         // LD, nn (0xC3)
