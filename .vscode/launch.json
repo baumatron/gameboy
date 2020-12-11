@@ -2,6 +2,17 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "gameboy.console .NET Core Launch (console)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/gameboy.console/bin/Debug/netcoreapp3.1/gameboy.console.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/gameboy.console",
+            "stopAtEntry": false,
+            "externalConsole": true
+        },
+        {
             "name": ".NET Core Launch (console)",
             "type": "coreclr",
             "request": "launch",
