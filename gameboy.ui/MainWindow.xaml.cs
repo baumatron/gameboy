@@ -13,7 +13,9 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace gameboy.ui
+using GameBoy;
+
+namespace GameBoy.ui
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -24,5 +26,20 @@ namespace gameboy.ui
         {
             InitializeComponent();
         }
+
+        public void InitializeGameboy()
+        {
+
+        }
+
+        public void UpdateFrame()
+        {
+            // Is this what I need? https://docs.microsoft.com/en-us/dotnet/api/system.windows.media.imaging.bitmapsource?view=netcore-3.1
+            // Maybe compositor should just fill a simple buffer and then this should do the windows specific image conversion to present it?
+            // Or is this all wrong and I just need to figure out how to render this using direct3d and a swap chain panel?
+            display.Source = gameboy._compositor.GrabFrame();
+        }
+
+        GameBoy gameboy = new GameBoy();
     }
 }

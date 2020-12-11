@@ -4,7 +4,7 @@ using System.Drawing.Imaging;
 
 namespace GameBoy
 {
-    class Compositor
+    public class Compositor
     {
         internal Compositor(IMemory memory)
         {
@@ -81,6 +81,38 @@ namespace GameBoy
 
                 bitmap.Save("screenshot.png", ImageFormat.Png);
             }
+        }
+
+        public Bitmap GrabFrame()
+        {
+            var colorMap = new Dictionary<byte, Color>
+            {
+                [0x0] = Color.Black,
+                [0x1] = Color.DarkGray,
+                [0x2] = Color.LightGray,
+                [0x3] = Color.White
+            };
+
+            var bitmap = new Bitmap(_renderBufferWidth, _renderBufferHeight);
+
+            for (int x = 0; x < _renderBufferWidth; x++)
+            {
+                for (int y = 0; y < _renderBufferHeight; y++)
+                {
+                    ushort index = (ushort)(y * _renderBufferWidth + x);
+                    // Each byte represents 4 pixels
+                    ushort renderBufferIndex = (ushort)(index / 4);
+                    byte packedPixels = _renderBuffer[renderBufferIndex];
+                    // Select the pixel we're copying
+                    byte selectedPixel = (byte)(index % 4);
+                    // TODO: Validate which pixel index is MSB
+                    byte pixelBits = (byte)((packedPixels >> selectedPixel * 2) & (byte)0x3);
+                    Color pixelColor = colorMap[pixelBits];
+                    bitmap.SetPixel(x, y, pixelColor);
+                }
+            }
+
+            return bitmap;
         }
 
         const ushort _renderBufferHeight = 256;

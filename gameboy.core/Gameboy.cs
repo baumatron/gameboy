@@ -75,6 +75,6 @@ namespace GameBoy
 
         public IMemory _memory;
 
-        Compositor _compositor;
+        public Compositor _compositor;
     }
 }
